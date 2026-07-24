@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { createOffsetPaginationQueryDto } from '../../common/dto/offset-pagination-query.dto';
 import { ProductCategory } from '../product-category.enum';
@@ -36,7 +36,12 @@ export class SearchProductsDto extends SearchProductsDtoBase {
 
   @ApiPropertyOptional({ description: 'Filter to only available products', example: true })
   @IsOptional()
-  @Type(() => Boolean)
+  @Type(() => String)
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
   available?: boolean;
 

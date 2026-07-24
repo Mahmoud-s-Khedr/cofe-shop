@@ -5,6 +5,7 @@ import {
   Delete,
   Param,
   Patch,
+  ParseIntPipe,
   Post,
   UploadedFile,
   UseGuards,
@@ -69,7 +70,7 @@ export class AdminProductsController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: Number })
-  @ApiOperation({ summary: 'Upload or replace the product image (admin only)' })
+  @ApiOperation({ summary: 'Upload a product image (admin only)' })
   @ApiResponse({ status: 200, description: 'Image attached', type: ProductResponseDto })
   async uploadImage(
     @Param() params: IdParamDto,
@@ -78,14 +79,18 @@ export class AdminProductsController {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
-    return this.productsService.replaceImage(params.id, file);
+    return this.productsService.addImage(params.id, file);
   }
 
-  @Delete(':id/image')
+  @Delete(':id/images/:fileId')
   @ApiParam({ name: 'id', type: Number })
-  @ApiOperation({ summary: 'Remove the product image (admin only)' })
+  @ApiParam({ name: 'fileId', type: Number })
+  @ApiOperation({ summary: 'Remove a selected product image (admin only)' })
   @ApiResponse({ status: 200, description: 'Image removed', type: ProductResponseDto })
-  removeImage(@Param() params: IdParamDto): Promise<Record<string, unknown>> {
-    return this.productsService.removeImage(params.id);
+  removeSpecificImage(
+    @Param() params: IdParamDto,
+    @Param('fileId', ParseIntPipe) fileId: number,
+  ): Promise<Record<string, unknown>> {
+    return this.productsService.removeImage(params.id, fileId);
   }
 }

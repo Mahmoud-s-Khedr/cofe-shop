@@ -87,6 +87,17 @@ CREATE TABLE products (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Product images are ordered by insertion. The legacy image columns above
+-- continue to mirror the first image for backward-compatible API responses.
+CREATE TABLE product_images (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id BIGINT NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    file_id BIGINT NOT NULL UNIQUE REFERENCES files(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX product_images_product_created_idx ON product_images (product_id, id);
+
 CREATE INDEX products_active_available_created_idx
     ON products (is_active, is_available, created_at DESC);
 CREATE INDEX products_price_idx ON products (price);

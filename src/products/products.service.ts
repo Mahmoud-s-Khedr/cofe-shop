@@ -10,6 +10,12 @@ import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
 const PRODUCT_COLUMNS = `id, category, title, description, details, price, quantity, image_url AS "imageUrl",
+  COALESCE((
+    SELECT json_agg(json_build_object('fileId', pi.file_id, 'url', f.url) ORDER BY pi.id)
+    FROM product_images pi
+    INNER JOIN files f ON f.id = pi.file_id
+    WHERE pi.product_id = products.id
+  ), '[]'::json) AS images,
   is_available AS "isAvailable", is_active AS "isActive",
   created_at::text AS "createdAt", updated_at::text AS "updatedAt"`;
 
@@ -21,6 +27,10 @@ export class ProductsService {
   ) {}
 
   async searchProducts(dto: SearchProductsDto, includeInactive: boolean): Promise<Record<string, unknown>> {
+    if (dto.minPrice !== undefined && dto.maxPrice !== undefined && dto.minPrice > dto.maxPrice) {
+      throw new BadRequestException('minPrice cannot be greater than maxPrice');
+    }
+
     const clauses: string[] = [];
     const params: unknown[] = [];
 
@@ -128,23 +138,25 @@ export class ProductsService {
     return { message: 'Product deactivated' };
   }
 
-  async replaceImage(
+  async addImage(
     productId: number,
     file: { originalname: string; mimetype: string; size: number; buffer: Buffer },
   ): Promise<Record<string, unknown>> {
-    const current = await this.databaseService.query<{ image_file_id: number | null }>(
-      'SELECT image_file_id FROM products WHERE id = $1',
-      [productId],
-    );
-    if (!current.rowCount) {
-      throw new NotFoundException('Product not found');
-    }
+    await this.assertProductExists(productId);
 
     const uploaded = await this.filesService.uploadImage(file, 'bw-cafe/products');
 
     try {
       await this.databaseService.query(
-        'UPDATE products SET image_file_id = $1, image_url = $2, updated_at = NOW() WHERE id = $3',
+        'INSERT INTO product_images (product_id, file_id) VALUES ($1, $2)',
+        [productId, uploaded.fileId],
+      );
+      await this.databaseService.query(
+        `UPDATE products
+         SET image_file_id = COALESCE(image_file_id, $1),
+             image_url = CASE WHEN image_file_id IS NULL THEN $2 ELSE image_url END,
+             updated_at = NOW()
+         WHERE id = $3`,
         [uploaded.fileId, uploaded.url, productId],
       );
     } catch (error) {
@@ -152,31 +164,38 @@ export class ProductsService {
       throw error;
     }
 
-    const previousFileId = current.rows[0].image_file_id;
-    if (previousFileId) {
-      await this.filesService.deleteFile(previousFileId);
-    }
-
     return { product: await this.fetchProduct(productId, true) };
   }
 
-  async removeImage(productId: number): Promise<Record<string, unknown>> {
-    const current = await this.databaseService.query<{ image_file_id: number | null }>(
-      'SELECT image_file_id FROM products WHERE id = $1',
+  async removeImage(productId: number, fileId: number): Promise<Record<string, unknown>> {
+    await this.assertProductExists(productId);
+
+    const image = await this.databaseService.query<{ file_id: number }>(
+      'SELECT file_id FROM product_images WHERE product_id = $1 AND file_id = $2',
+      [productId, fileId],
+    );
+    if (!image.rowCount) {
+      throw new NotFoundException('Product image not found');
+    }
+
+    const previousFileId = image.rows[0].file_id;
+    await this.databaseService.query(
+      'DELETE FROM product_images WHERE product_id = $1 AND file_id = $2',
+      [productId, previousFileId],
+    );
+
+    const nextImage = await this.databaseService.query<{ file_id: number; url: string }>(
+      `SELECT pi.file_id, f.url
+       FROM product_images pi
+       INNER JOIN files f ON f.id = pi.file_id
+       WHERE pi.product_id = $1
+       ORDER BY pi.id
+       LIMIT 1`,
       [productId],
     );
-    if (!current.rowCount) {
-      throw new NotFoundException('Product not found');
-    }
-
-    const previousFileId = current.rows[0].image_file_id;
-    if (!previousFileId) {
-      throw new BadRequestException('Product has no image');
-    }
-
     await this.databaseService.query(
-      'UPDATE products SET image_file_id = NULL, image_url = NULL, updated_at = NOW() WHERE id = $1',
-      [productId],
+      'UPDATE products SET image_file_id = $1, image_url = $2, updated_at = NOW() WHERE id = $3',
+      [nextImage.rows[0]?.file_id ?? null, nextImage.rows[0]?.url ?? null, productId],
     );
     await this.filesService.deleteFile(previousFileId);
 

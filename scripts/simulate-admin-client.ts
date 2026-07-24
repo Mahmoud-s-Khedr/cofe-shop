@@ -17,6 +17,7 @@ type Product = {
   id: number;
   title: string;
   imageUrl: string | null;
+  images: Array<{ fileId: number; url: string }>;
   isAvailable: boolean;
 };
 
@@ -168,7 +169,7 @@ async function main(): Promise<void> {
       }
     });
 
-    await ctx.step('product.replace-image', async () => {
+    await ctx.step('product.upload-second-image', async () => {
       const result = await ctx.api<{ product: Product }>({
         path: `/admin/products/${managedProduct.id}/image`,
         token: adminToken,
@@ -176,21 +177,22 @@ async function main(): Promise<void> {
       });
       const body = expectSuccess(result, [200, 201]);
       managedProduct = (body.data as { product: Product }).product;
-      if (!managedProduct.imageUrl) {
-        throw new Error('Expected imageUrl after image replacement');
+      if (managedProduct.images.length !== 2) {
+        throw new Error('Expected two product images after the second upload');
       }
     });
 
-    await ctx.step('product.delete-image', async () => {
+    await ctx.step('product.delete-selected-image', async () => {
+      const selectedImage = managedProduct.images[1];
       const result = await ctx.api<{ product: Product }>({
         method: 'DELETE',
-        path: `/admin/products/${managedProduct.id}/image`,
+        path: `/admin/products/${managedProduct.id}/images/${selectedImage.fileId}`,
         token: adminToken,
       });
       const body = expectSuccess(result, 200);
       managedProduct = (body.data as { product: Product }).product;
-      if (managedProduct.imageUrl !== null) {
-        throw new Error('Expected imageUrl to be null after delete image');
+      if (managedProduct.images.length !== 1 || managedProduct.imageUrl !== managedProduct.images[0].url) {
+        throw new Error('Expected the primary product image to remain after deleting the selected second image');
       }
     });
 

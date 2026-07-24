@@ -82,8 +82,9 @@ export class FilesService {
       `SELECT f.id
        FROM files f
        LEFT JOIN products p ON p.image_file_id = f.id
+       LEFT JOIN product_images pi ON pi.file_id = f.id
        LEFT JOIN orders o ON o.screenshot_file_id = f.id
-       WHERE p.id IS NULL AND o.id IS NULL`,
+       WHERE p.id IS NULL AND pi.id IS NULL AND o.id IS NULL`,
     );
     return result.rows.map((row) => row.id);
   }

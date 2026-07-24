@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform } from 'class-transformer';
 import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Length, Min } from 'class-validator';
 import { ProductCategory } from '../product-category.enum';
 
@@ -13,12 +14,14 @@ export class CreateProductDto {
   title!: string;
 
   @ApiPropertyOptional({ description: 'Short description (1–2000 chars)', example: 'Espresso with steamed milk foam', maxLength: 2000 })
+  @Transform(({ value }) => typeof value === 'string' && value.trim() === '' ? undefined : value)
   @IsOptional()
   @IsString()
   @Length(1, 2000)
   description?: string;
 
   @ApiPropertyOptional({ description: 'Additional free-text details', example: 'Contains dairy', maxLength: 2000 })
+  @Transform(({ value }) => typeof value === 'string' && value.trim() === '' ? undefined : value)
   @IsOptional()
   @IsString()
   @Length(1, 2000)

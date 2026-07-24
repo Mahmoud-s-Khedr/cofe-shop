@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import request from 'supertest';
 import { ErrorResponseDto } from './error-response.dto';
 import { ProductListResponseDto } from '../../products/dto/product-response.dto';
+import { ProductCategory } from '../../products/product-category.enum';
 
 @Controller('swagger-test')
 class SwaggerTestController {
@@ -33,12 +34,14 @@ class SwaggerTestController {
         items: [
           {
             id: 1,
+            category: ProductCategory.coffee,
             title: 'Cappuccino',
             description: 'Espresso with steamed milk foam',
             details: null,
             price: 250,
             quantity: null,
             imageUrl: null,
+            images: [],
             isAvailable: true,
             isActive: true,
             createdAt: new Date().toISOString(),
@@ -87,6 +90,9 @@ describe('ErrorResponseDto Swagger', () => {
     const productListSchema = document.components?.schemas?.ProductListResponseDto;
     expect(productListSchema?.properties?.data?.$ref).toBe('#/components/schemas/ProductListDataDto');
     expect(document.components?.schemas?.ProductListDataDto?.properties?.items?.type).toBe('array');
+    expect(document.components?.schemas?.ProductDto?.properties?.images?.items?.$ref).toBe(
+      '#/components/schemas/ProductImageDto',
+    );
   });
 
   it('serves Swagger UI and docs JSON endpoints', async () => {

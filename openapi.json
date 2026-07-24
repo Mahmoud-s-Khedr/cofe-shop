@@ -1015,13 +1015,15 @@
             "bearer": []
           }
         ],
-        "summary": "Upload or replace the product image (admin only)",
+        "summary": "Upload a product image (admin only)",
         "tags": [
           "Admin"
         ]
-      },
+      }
+    },
+    "/api/v1/admin/products/{id}/images/{fileId}": {
       "delete": {
-        "operationId": "AdminProductsController_removeImage",
+        "operationId": "AdminProductsController_removeSpecificImage",
         "parameters": [
           {
             "name": "id",
@@ -1029,6 +1031,14 @@
             "in": "path",
             "schema": {
               "minimum": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
               "type": "number"
             }
           }
@@ -1050,7 +1060,7 @@
             "bearer": []
           }
         ],
-        "summary": "Remove the product image (admin only)",
+        "summary": "Remove a selected product image (admin only)",
         "tags": [
           "Admin"
         ]
@@ -2280,6 +2290,23 @@
           "drinks"
         ]
       },
+      "ProductImageDto": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "number",
+            "example": 1
+          },
+          "url": {
+            "type": "string",
+            "example": "https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg"
+          }
+        },
+        "required": [
+          "fileId",
+          "url"
+        ]
+      },
       "ProductDto": {
         "type": "object",
         "properties": {
@@ -2324,6 +2351,13 @@
             "nullable": true,
             "example": "https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg"
           },
+          "images": {
+            "description": "Product images in upload order; the first image is imageUrl.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductImageDto"
+            }
+          },
           "isAvailable": {
             "type": "boolean",
             "example": true
@@ -2346,6 +2380,7 @@
           "category",
           "title",
           "price",
+          "images",
           "isAvailable",
           "isActive",
           "createdAt",

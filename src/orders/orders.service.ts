@@ -232,6 +232,10 @@ export class OrdersService {
   }
 
   async adminListOrders(filter: AdminListOrdersFilter): Promise<Record<string, unknown>> {
+    if (filter.fromDate && filter.toDate && filter.fromDate > filter.toDate) {
+      throw new BadRequestException('fromDate cannot be later than toDate');
+    }
+
     const clauses: string[] = [];
     const params: unknown[] = [];
 

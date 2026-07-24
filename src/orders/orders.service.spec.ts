@@ -219,4 +219,15 @@ describe('OrdersService', () => {
       await expect(service.getMyOrder(7, 'BW-X')).rejects.toThrow(NotFoundException);
     });
   });
+  describe('adminListOrders', () => {
+    it('rejects a date range where the start is after the end', async () => {
+      const query = jest.fn();
+      const service = new OrdersService({ query } as any, filesService as any);
+
+      await expect(service.adminListOrders({ fromDate: '2026-07-31', toDate: '2026-07-01' })).rejects.toThrow(BadRequestException);
+
+      expect(query).not.toHaveBeenCalled();
+    });
+  });
+
 });

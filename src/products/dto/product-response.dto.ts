@@ -2,6 +2,14 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SuccessEnvelopeDto } from '../../common/dto/api-response-envelope.dto';
 import { ProductCategory } from '../product-category.enum';
 
+export class ProductImageDto {
+  @ApiProperty({ example: 1 })
+  fileId!: number;
+
+  @ApiProperty({ example: 'https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg' })
+  url!: string;
+}
+
 export class ProductDto {
   @ApiProperty({ example: 1 })
   id!: number;
@@ -26,6 +34,9 @@ export class ProductDto {
 
   @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg', nullable: true })
   imageUrl!: string | null;
+
+  @ApiProperty({ type: [ProductImageDto], description: 'Product images in upload order; the first image is imageUrl.' })
+  images!: ProductImageDto[];
 
   @ApiProperty({ example: true })
   isAvailable!: boolean;

@@ -36,8 +36,8 @@ Soft delete: sets `isActive = false` and `isAvailable = false`. The product row 
 ```
 Use this to 86 an item temporarily without deactivating it entirely.
 
-### `POST /admin/products/:id/image` / `DELETE /admin/products/:id/image`
-`multipart/form-data`, file field `file`, uploads to Cloudinary and sets `imageUrl`/backing file record. `DELETE` removes the current image. Replacing an image automatically deletes the old Cloudinary asset.
+### `POST /admin/products/:id/image` / `DELETE /admin/products/:id/images/:fileId`
+`POST` accepts `multipart/form-data` with the file field named `file` and adds an image in Cloudinary. Products return `images` in upload order, while `imageUrl` remains the first image for single-image clients. To remove an image, the admin selects its `fileId` from `images` and calls the targeted `DELETE` endpoint. Deleting the first image promotes the next one; deleting the final image sets `imageUrl` to `null`.
 
 ## 3. Order management
 

@@ -26,8 +26,9 @@ async function main(): Promise<void> {
       `SELECT f.id, f.public_id, f.resource_type
        FROM files f
        LEFT JOIN products p ON p.image_file_id = f.id
+       LEFT JOIN product_images pi ON pi.file_id = f.id
        LEFT JOIN orders o ON o.screenshot_file_id = f.id
-       WHERE p.id IS NULL AND o.id IS NULL`,
+       WHERE p.id IS NULL AND pi.id IS NULL AND o.id IS NULL`,
     );
 
     console.log(`Found ${orphans.rowCount ?? 0} orphan file(s)`);
