@@ -40,7 +40,7 @@ export class CreateOrderDto {
   @IsEnum(['DELIVERY', 'PICKUP'])
   orderType!: 'DELIVERY' | 'PICKUP';
 
-  @ApiPropertyOptional({ description: 'Required for DELIVERY orders', example: 'Full delivery address as one string' })
+  @ApiPropertyOptional({ description: 'Optional delivery address', example: 'Full delivery address as one string' })
   @IsOptional()
   @IsString()
   @Length(1, 1000)

@@ -131,10 +131,8 @@ CREATE TABLE orders (
     completed_at TIMESTAMPTZ,
     cancelled_at TIMESTAMPTZ,
     rejected_at TIMESTAMPTZ,
-    CHECK (
-        (order_type = 'DELIVERY' AND address IS NOT NULL)
-        OR (order_type = 'PICKUP' AND pickup_time IS NOT NULL)
-    )
+    CONSTRAINT orders_pickup_time_required_check
+        CHECK (order_type <> 'PICKUP' OR pickup_time IS NOT NULL)
 );
 
 CREATE INDEX orders_user_created_idx ON orders (user_id, created_at DESC);

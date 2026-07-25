@@ -36,7 +36,7 @@ export function assertValidAdminTransition(
   if (!NEXT_STATUSES[current].includes(next)) {
     throw new BadRequestException(`Cannot transition order from ${current} to ${next}`);
   }
-  if (next === 'CONFIRMED' && !hasScreenshot) {
+  if (next === 'CONFIRMED' && orderType === 'DELIVERY' && !hasScreenshot) {
     throw new BadRequestException('Order cannot be confirmed without a payment screenshot');
   }
   if (next === 'REJECTED' && !hasReason) {

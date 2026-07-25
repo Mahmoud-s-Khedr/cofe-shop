@@ -73,6 +73,7 @@ async function main(): Promise<void> {
         path: '/admin/products',
         token: adminToken,
         json: {
+          category: 'coffee',
           title: `Admin Product ${runId}`,
           description: 'Admin-managed simulation product',
           details: 'Initial details',

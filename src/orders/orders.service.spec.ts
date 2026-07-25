@@ -24,7 +24,7 @@ describe('OrdersService', () => {
   });
 
   describe('createOrder', () => {
-    it('rejects delivery orders without an address', async () => {
+    it('rejects pickup orders without a pickup time', async () => {
       const client = buildClient(jest.fn());
       const service = new OrdersService(buildDatabaseService(client) as any, filesService as any);
 
@@ -32,7 +32,7 @@ describe('OrdersService', () => {
         service.createOrder(null, {
           customerName: 'A',
           customerPhone: '+22200000000',
-          orderType: 'DELIVERY',
+          orderType: 'PICKUP',
           items: [{ productId: 1, quantity: 1 }],
         } as any),
       ).rejects.toThrow(BadRequestException);
@@ -90,6 +90,40 @@ describe('OrdersService', () => {
         expect.stringContaining('INSERT INTO order_item_images'),
         [1, 12, 'https://images.example/latte.jpg', 0],
       );
+    });
+
+    it('accepts delivery orders without an address', async () => {
+      const query = jest.fn();
+      query
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: null, price: '250.00', quantity: null, is_active: true, is_available: true }],
+        })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1 }] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: '99', orderNumber: 'BW-TEST-0001', userId: null, status: 'PENDING', subtotal: '250.00', total: '250.00' }],
+        })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, details: null, imageUrl: null, hasSnapshot: false, unitPrice: '250.00', quantity: 1 }],
+        })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+      const service = new OrdersService(buildDatabaseService(buildClient(query)) as any, filesService as any);
+
+      await expect(
+        service.createOrder(null, {
+          customerName: 'A',
+          customerPhone: '+22200000000',
+          orderType: 'DELIVERY',
+          items: [{ productId: 1, quantity: 1 }],
+        } as any),
+      ).resolves.toBeDefined();
     });
 
     it('rejects inactive products', async () => {

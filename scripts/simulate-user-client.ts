@@ -83,6 +83,7 @@ async function main(): Promise<void> {
           path: '/admin/products',
           token: adminToken,
           json: {
+            category: 'coffee',
             title,
             description: `Bootstrap product ${index + 1}`,
             details: 'Client simulation bootstrap',

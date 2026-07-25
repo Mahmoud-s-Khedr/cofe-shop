@@ -69,7 +69,7 @@ or, for a rejection:
 
 **Transition rules enforced server-side** (violating these returns an error — don't rely on the frontend to pre-validate):
 
-- `PENDING → CONFIRMED` **requires a screenshot already attached** to the order (customer/guest must have called `POST /orders/:orderNumber/screenshot` first).
+- `PENDING → CONFIRMED` requires a screenshot for `DELIVERY` orders; pickup orders can be confirmed without one.
 - `PENDING → REJECTED` **requires `reason`**.
 - `REJECTED`, `CANCELLED`, `COMPLETED` are terminal — no further transitions.
 - `READY` is only valid for `PICKUP` orders.
@@ -121,11 +121,11 @@ curl -s -X PATCH $BASE/admin/products/$PRODUCT_ID/availability -H "Authorization
 # 4. List pending orders
 curl -s "$BASE/admin/orders?status=PENDING" -H "Authorization: Bearer $ADMIN_TOKEN"
 
-# 5a. Try confirming an order with NO screenshot yet -> expect an error
+# 5a. Try confirming a DELIVERY order with NO screenshot yet -> expect an error
 curl -s -X PATCH $BASE/admin/orders/$ORDER_NUMBER/status -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"status":"CONFIRMED"}'
 
-# 5b. After the customer/guest has uploaded a screenshot, confirm it
+# 5b. After the customer/guest has uploaded a delivery screenshot, confirm it
 curl -s -X PATCH $BASE/admin/orders/$ORDER_NUMBER/status -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"status":"CONFIRMED","note":"Verified payment"}'
 

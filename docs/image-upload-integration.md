@@ -144,7 +144,7 @@ The request must identify the order owner in one of these ways:
 
 For guest checkout, save `guestAccessToken` from the response to `POST /api/v1/orders` immediately. It is returned only once and is needed to retrieve, cancel, or upload a screenshot for that guest order.
 
-Screenshots may only be uploaded while the order status is `PENDING`. A subsequent upload while still pending replaces the previous screenshot and removes the old Cloudinary asset.
+Screenshots may only be uploaded while the order status is `PENDING`. They are required before an admin can confirm a delivery order, but optional for pickup orders. A subsequent upload while still pending replaces the previous screenshot and removes the old Cloudinary asset.
 
 ### Browser `fetch` example
 

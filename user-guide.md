@@ -148,7 +148,7 @@ Works identically whether or not you're logged in — if you send `Authorization
 }
 ```
 
-- `orderType: "DELIVERY"` requires `address`; `orderType: "PICKUP"` requires `pickupTime` (ISO datetime) instead — the two are mutually exclusive.
+- `address` is optional for delivery orders. `orderType: "PICKUP"` requires `pickupTime` (ISO datetime); pickup orders do not use an address.
 - **Never send price or total** — the server always recalculates from the current DB price of each product and ignores any client-supplied amounts.
 - Ordering an inactive/unavailable product, or a quantity exceeding tracked stock, is rejected.
 
@@ -179,7 +179,7 @@ Response `data.order` (`OrderDto`):
 Owner via JWT, or guest via `X-Order-Token`. Returns the same `OrderDto` (no `guestAccessToken` on repeat fetches).
 
 ### `POST /orders/:orderNumber/screenshot`
-`multipart/form-data`, file field name `file`. Attaches the payment screenshot. Only allowed while the order is still `PENDING`; re-uploading replaces the previous screenshot (also only while `PENDING`).
+`multipart/form-data`, file field name `file`. Attaches an optional payment screenshot. Delivery orders need one before an admin can confirm them; pickup orders do not. Uploads are only allowed while the order is still `PENDING`; re-uploading replaces the previous screenshot.
 
 ### `PATCH /orders/:orderNumber/cancel`
 ```json
@@ -193,7 +193,7 @@ Owner via JWT, or guest via `X-Order-Token`. Returns the same `OrderDto` (no `gu
 PENDING
   ├──→ REJECTED             (admin rejects; requires a reason)
   ├──→ CANCELLED             (customer/guest or admin cancels; PENDING/CONFIRMED only for customer)
-  └──→ CONFIRMED              (admin accepts; requires a screenshot to already be attached)
+  └──→ CONFIRMED              (delivery requires a screenshot; pickup does not)
           └──→ PREPARING
                   ├──→ READY               (pickup orders only)
                   └──→ OUT_FOR_DELIVERY    (delivery orders only)
@@ -251,7 +251,7 @@ curl -s -X POST $BASE/orders -H "Authorization: Bearer $TOKEN" -H 'Content-Type:
   -d '{"customerName":"Test User","customerPhone":"+22200000001","orderType":"PICKUP","pickupTime":"2026-07-14T10:00:00.000Z","items":[{"productId":1,"quantity":2}]}'
 # -> save .data.order.orderNumber as ORDER_NUMBER
 
-# 6. Upload payment screenshot
+# 6. Upload payment screenshot (required before delivery confirmation; optional for pickup)
 curl -s -X POST $BASE/orders/$ORDER_NUMBER/screenshot -H "Authorization: Bearer $TOKEN" \
   -F "file=@/path/to/screenshot.png"
 

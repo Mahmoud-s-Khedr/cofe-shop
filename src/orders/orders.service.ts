@@ -47,9 +47,6 @@ export class OrdersService {
   ) {}
 
   async createOrder(user: AuthUser | null, dto: CreateOrderDto): Promise<Record<string, unknown>> {
-    if (dto.orderType === 'DELIVERY' && !dto.address) {
-      throw new BadRequestException('address is required for delivery orders');
-    }
     if (dto.orderType === 'PICKUP' && !dto.pickupTime) {
       throw new BadRequestException('pickupTime is required for pickup orders');
     }

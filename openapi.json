@@ -3061,7 +3061,7 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 1000,
-            "description": "Required for DELIVERY orders",
+            "description": "Optional delivery address",
             "example": "Full delivery address as one string"
           },
           "pickupTime": {
