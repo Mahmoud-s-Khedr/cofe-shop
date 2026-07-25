@@ -5,7 +5,6 @@ import {
   Delete,
   Param,
   Patch,
-  ParseIntPipe,
   Post,
   UploadedFile,
   UseGuards,
@@ -21,6 +20,7 @@ import { CreateProductDto } from '../products/dto/create-product.dto';
 import { UpdateAvailabilityDto } from '../products/dto/update-availability.dto';
 import { UpdateProductDto } from '../products/dto/update-product.dto';
 import { ProductResponseDto } from '../products/dto/product-response.dto';
+import { ProductImageParamDto } from '../products/dto/product-image-param.dto';
 import { ProductsService } from '../products/products.service';
 
 @ApiTags('Admin')
@@ -88,9 +88,8 @@ export class AdminProductsController {
   @ApiOperation({ summary: 'Remove a selected product image (admin only)' })
   @ApiResponse({ status: 200, description: 'Image removed', type: ProductResponseDto })
   removeSpecificImage(
-    @Param() params: IdParamDto,
-    @Param('fileId', ParseIntPipe) fileId: number,
+    @Param() params: ProductImageParamDto,
   ): Promise<Record<string, unknown>> {
-    return this.productsService.removeImage(params.id, fileId);
+    return this.productsService.removeImage(params.id, params.fileId);
   }
 }
