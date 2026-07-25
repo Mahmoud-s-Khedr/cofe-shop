@@ -43,26 +43,32 @@ describe('OrdersService', () => {
       // 1) lock products
       query.mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{ id: 1, title: 'Latte', price: '250.00', quantity: null, is_active: true, is_available: true }],
+        rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: 'https://images.example/latte.jpg', price: '250.00', quantity: null, is_active: true, is_available: true }],
       });
-      // 2) insert order
+      // 2) fetch product images
+      query.mockResolvedValueOnce({ rowCount: 1, rows: [{ productId: 1, fileId: 12, url: 'https://images.example/latte.jpg' }] });
+      // 3) insert order
       query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] });
-      // 3) insert order_items
+      // 4) insert order_items
+      query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1 }] });
+      // 5) insert order-item image snapshot
       query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
-      // 4) decrement stock (no-op since quantity is null)
+      // 6) decrement stock (no-op since quantity is null)
       query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
-      // 5) insert status history
+      // 7) insert status history
       query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
-      // 6) fetchOrder: order row
+      // 8) fetchOrder: order row
       query.mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ id: '99', orderNumber: 'BW-TEST-0001', userId: null, status: 'PENDING', subtotal: '500.00', total: '500.00' }],
       });
-      // 7) fetchOrder: items row
+      // 9) fetchOrder: items row
       query.mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{ id: '1', productId: '1', productTitle: 'Latte', unitPrice: '250.00', quantity: 2 }],
+        rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, details: null, imageUrl: 'https://images.example/latte.jpg', hasSnapshot: true, unitPrice: '250.00', quantity: 2 }],
       });
+      // 10) fetchOrder: snapshot images
+      query.mockResolvedValueOnce({ rowCount: 1, rows: [{ orderItemId: 1, fileId: 12, url: 'https://images.example/latte.jpg' }] });
 
       const client = buildClient(query);
       const service = new OrdersService(buildDatabaseService(client) as any, filesService as any);
@@ -76,13 +82,24 @@ describe('OrdersService', () => {
       } as any);
 
       expect((result as any).order.guestAccessToken).toBeDefined();
+      expect((result as any).order.items[0]).toMatchObject({
+        imageUrl: 'https://images.example/latte.jpg',
+        images: [{ fileId: 12, url: 'https://images.example/latte.jpg' }],
+      });
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('INSERT INTO order_item_images'),
+        [1, 12, 'https://images.example/latte.jpg', 0],
+      );
     });
 
     it('rejects inactive products', async () => {
-      const query = jest.fn().mockResolvedValueOnce({
-        rowCount: 1,
-        rows: [{ id: 1, title: 'Latte', price: '250.00', quantity: null, is_active: false, is_available: true }],
-      });
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: null, price: '250.00', quantity: null, is_active: false, is_available: true }],
+        })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] });
       const client = buildClient(query);
       const service = new OrdersService(buildDatabaseService(client) as any, filesService as any);
 

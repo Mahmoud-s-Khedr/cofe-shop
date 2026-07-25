@@ -146,6 +146,10 @@ CREATE TABLE order_items (
     order_id BIGINT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
     product_id BIGINT REFERENCES products(id) ON DELETE SET NULL,
     product_title TEXT NOT NULL,
+    product_category TEXT,
+    product_description TEXT,
+    product_details TEXT,
+    image_url TEXT,
     unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
     quantity INTEGER NOT NULL CHECK (quantity > 0),
     line_total NUMERIC(12,2) NOT NULL CHECK (line_total >= 0)
@@ -153,6 +157,18 @@ CREATE TABLE order_items (
 
 CREATE INDEX order_items_order_idx ON order_items (order_id);
 CREATE INDEX order_items_product_idx ON order_items (product_id);
+
+CREATE TABLE order_item_images (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_item_id BIGINT NOT NULL REFERENCES order_items(id) ON DELETE CASCADE,
+    file_id BIGINT NOT NULL REFERENCES files(id) ON DELETE RESTRICT,
+    url TEXT NOT NULL,
+    position INTEGER NOT NULL CHECK (position >= 0),
+    UNIQUE (order_item_id, file_id),
+    UNIQUE (order_item_id, position)
+);
+
+CREATE INDEX order_item_images_file_idx ON order_item_images (file_id);
 
 CREATE TABLE order_status_history (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

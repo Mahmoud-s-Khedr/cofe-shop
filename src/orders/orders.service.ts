@@ -58,21 +58,51 @@ export class OrdersService {
       const productIds = [...new Set(dto.items.map((item) => item.productId))];
       const products = await client.query<{
         id: number;
+        category: string;
         title: string;
+        description: string | null;
+        details: string | null;
+        imageUrl: string | null;
         price: string;
         quantity: number | null;
         is_active: boolean;
         is_available: boolean;
       }>(
-        `SELECT id, title, price, quantity, is_active, is_available
+        `SELECT id, category::text, title, description, details, image_url AS "imageUrl", price, quantity, is_active, is_available
          FROM products WHERE id = ANY($1::bigint[]) FOR UPDATE`,
         [productIds],
       );
 
+      const productImages = await client.query<{ productId: number; fileId: number; url: string }>(
+        `SELECT pi.product_id AS "productId", pi.file_id AS "fileId", f.url
+         FROM product_images pi
+         INNER JOIN files f ON f.id = pi.file_id
+         WHERE pi.product_id = ANY($1::bigint[])
+         ORDER BY pi.product_id, pi.id`,
+        [productIds],
+      );
+      const imagesByProductId = new Map<number, Array<{ fileId: number; url: string }>>();
+      for (const image of productImages.rows) {
+        const images = imagesByProductId.get(Number(image.productId)) ?? [];
+        images.push({ fileId: Number(image.fileId), url: image.url });
+        imagesByProductId.set(Number(image.productId), images);
+      }
+
       const productMap = new Map(products.rows.map((row) => [Number(row.id), row]));
 
       let subtotal = 0;
-      const lineItems: Array<{ productId: number; title: string; unitPrice: number; quantity: number; lineTotal: number }> = [];
+      const lineItems: Array<{
+        productId: number;
+        category: string;
+        title: string;
+        description: string | null;
+        details: string | null;
+        imageUrl: string | null;
+        images: Array<{ fileId: number; url: string }>;
+        unitPrice: number;
+        quantity: number;
+        lineTotal: number;
+      }> = [];
 
       for (const item of dto.items) {
         const product = productMap.get(item.productId);
@@ -88,8 +118,20 @@ export class OrdersService {
 
         const unitPrice = Number(product.price);
         const lineTotal = unitPrice * item.quantity;
+        const images = imagesByProductId.get(Number(product.id)) ?? [];
         subtotal += lineTotal;
-        lineItems.push({ productId: product.id, title: product.title, unitPrice, quantity: item.quantity, lineTotal });
+        lineItems.push({
+          productId: product.id,
+          category: product.category,
+          title: product.title,
+          description: product.description,
+          details: product.details,
+          imageUrl: product.imageUrl ?? images[0]?.url ?? null,
+          images,
+          unitPrice,
+          quantity: item.quantity,
+          lineTotal,
+        });
       }
 
       const deliveryFee = 0;
@@ -113,11 +155,33 @@ export class OrdersService {
       });
 
       for (const item of lineItems) {
-        await client.query(
-          `INSERT INTO order_items (order_id, product_id, product_title, unit_price, quantity, line_total)
-           VALUES ($1, $2, $3, $4, $5, $6)`,
-          [orderId.id, item.productId, item.title, item.unitPrice, item.quantity, item.lineTotal],
+        const insertedItem = await client.query<{ id: number }>(
+          `INSERT INTO order_items (
+             order_id, product_id, product_title, product_category, product_description, product_details, image_url,
+             unit_price, quantity, line_total
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           RETURNING id`,
+          [
+            orderId.id,
+            item.productId,
+            item.title,
+            item.category,
+            item.description,
+            item.details,
+            item.imageUrl,
+            item.unitPrice,
+            item.quantity,
+            item.lineTotal,
+          ],
         );
+
+        for (const [position, image] of item.images.entries()) {
+          await client.query(
+            `INSERT INTO order_item_images (order_item_id, file_id, url, position)
+             VALUES ($1, $2, $3, $4)`,
+            [insertedItem.rows[0].id, image.fileId, image.url, position],
+          );
+        }
 
         await client.query(
           `UPDATE products SET quantity = quantity - $1, updated_at = NOW()
@@ -220,7 +284,7 @@ export class OrdersService {
       [userId],
     );
 
-    return { items: items.rows.map((row) => this.stripInternal(row)), total: Number(total.rows[0].count) };
+    return { items: (await this.hydrateOrders(this.databaseService, items.rows)).map((row) => this.stripInternal(row)), total: Number(total.rows[0].count) };
   }
 
   async getMyOrder(userId: number, orderNumber: string): Promise<Record<string, unknown>> {
@@ -277,7 +341,7 @@ export class OrdersService {
       params,
     );
 
-    return { items: items.rows.map((row) => this.stripInternal(row)), total: Number(total.rows[0].count) };
+    return { items: (await this.hydrateOrders(this.databaseService, items.rows)).map((row) => this.stripInternal(row)), total: Number(total.rows[0].count) };
   }
 
   async adminGetOrder(orderNumber: string): Promise<Record<string, unknown>> {
@@ -364,7 +428,9 @@ export class OrdersService {
   }
 
   private stripInternal(row: Record<string, unknown>): Record<string, unknown> {
-    const { guestAccessTokenHash: _hash, screenshotFileId: _fileId, ...rest } = row;
+    const rest = { ...row };
+    delete rest.guestAccessTokenHash;
+    delete rest.screenshotFileId;
     return rest;
   }
 
@@ -449,25 +515,107 @@ export class OrdersService {
     if (!result.rowCount) {
       return null;
     }
-    const order = result.rows[0] as Record<string, unknown>;
+    return (await this.hydrateOrders(runner, [result.rows[0] as Record<string, unknown>]))[0];
+  }
 
-    const items = await runner.query(
-      `SELECT id, product_id AS "productId", product_title AS "productTitle",
-              unit_price AS "unitPrice", quantity, line_total AS "lineTotal"
-       FROM order_items WHERE order_id = $1 ORDER BY id ASC`,
-      [order.id],
-    );
+  /** Attaches ordered product snapshots in bulk so paginated lists do not cause N+1 queries. */
+  private async hydrateOrders(runner: QueryRunner, rows: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
+    if (!rows.length) {
+      return [];
+    }
 
-    return {
+    const orders = rows.map((order) => ({
       ...order,
       id: this.normalizeNullableInt(order.id),
       userId: this.normalizeNullableInt(order.userId),
       screenshotFileId: this.normalizeNullableInt(order.screenshotFileId),
-      items: items.rows.map((item) => ({
-        ...item,
-        id: this.normalizeNullableInt((item as { id: DbInt }).id),
-        productId: this.normalizeNullableInt((item as { productId: DbInt | null }).productId),
-      })),
-    };
+    }));
+    const orderIds = orders.map((order) => order.id).filter((id): id is number => id !== null);
+    const items = await runner.query<{
+      id: DbInt;
+      orderId: DbInt;
+      productId: DbInt | null;
+      productTitle: string;
+      category: string | null;
+      description: string | null;
+      details: string | null;
+      imageUrl: string | null;
+      hasSnapshot: boolean;
+      unitPrice: string;
+      quantity: number;
+      lineTotal: string;
+    }>(
+      `SELECT oi.id, oi.order_id AS "orderId", oi.product_id AS "productId", oi.product_title AS "productTitle",
+              COALESCE(oi.product_category::text, p.category::text) AS category,
+              COALESCE(oi.product_description, p.description) AS description,
+              COALESCE(oi.product_details, p.details) AS details,
+              COALESCE(oi.image_url, p.image_url) AS "imageUrl",
+              oi.product_category IS NOT NULL AS "hasSnapshot",
+              oi.unit_price AS "unitPrice", oi.quantity, oi.line_total AS "lineTotal"
+       FROM order_items oi
+       LEFT JOIN products p ON p.id = oi.product_id
+       WHERE oi.order_id = ANY($1::bigint[])
+       ORDER BY oi.order_id, oi.id`,
+      [orderIds],
+    );
+
+    const itemRows = items.rows.map((item) => ({
+      ...item,
+      id: this.normalizeNullableInt((item as { id: DbInt }).id),
+      orderId: this.normalizeNullableInt((item as { orderId: DbInt }).orderId),
+      productId: this.normalizeNullableInt((item as { productId: DbInt | null }).productId),
+      images: [] as Array<{ fileId: number; url: string }>,
+    }));
+    const itemIds = itemRows.map((item) => item.id).filter((id): id is number => id !== null);
+    const snapshotImages = itemIds.length
+      ? await runner.query<{ orderItemId: number; fileId: number; url: string }>(
+          `SELECT order_item_id AS "orderItemId", file_id AS "fileId", url
+           FROM order_item_images WHERE order_item_id = ANY($1::bigint[])
+           ORDER BY order_item_id, position`,
+          [itemIds],
+        )
+      : { rows: [] as Array<{ orderItemId: number; fileId: number; url: string }> };
+    const imagesByItemId = new Map<number, Array<{ fileId: number; url: string }>>();
+    for (const image of snapshotImages.rows) {
+      const imageList = imagesByItemId.get(Number(image.orderItemId)) ?? [];
+      imageList.push({ fileId: Number(image.fileId), url: image.url });
+      imagesByItemId.set(Number(image.orderItemId), imageList);
+    }
+
+    const legacyProductIds = [...new Set(itemRows
+      .filter((item) => !item.hasSnapshot && item.productId !== null)
+      .map((item) => item.productId as number))];
+    const legacyImages = legacyProductIds.length
+      ? await runner.query<{ productId: number; fileId: number; url: string }>(
+          `SELECT pi.product_id AS "productId", pi.file_id AS "fileId", f.url
+           FROM product_images pi
+           INNER JOIN files f ON f.id = pi.file_id
+           WHERE pi.product_id = ANY($1::bigint[])
+           ORDER BY pi.product_id, pi.id`,
+          [legacyProductIds],
+        )
+      : { rows: [] as Array<{ productId: number; fileId: number; url: string }> };
+    const imagesByLegacyProductId = new Map<number, Array<{ fileId: number; url: string }>>();
+    for (const image of legacyImages.rows) {
+      const imageList = imagesByLegacyProductId.get(Number(image.productId)) ?? [];
+      imageList.push({ fileId: Number(image.fileId), url: image.url });
+      imagesByLegacyProductId.set(Number(image.productId), imageList);
+    }
+
+    const itemsByOrderId = new Map<number, Record<string, unknown>[]>();
+    for (const item of itemRows) {
+      const { orderId, hasSnapshot, ...publicItem } = item;
+      const hydratedItem = {
+        ...publicItem,
+        images: hasSnapshot
+          ? imagesByItemId.get(item.id as number) ?? []
+          : imagesByLegacyProductId.get(item.productId as number) ?? [],
+      };
+      const orderItems = itemsByOrderId.get(orderId as number) ?? [];
+      orderItems.push(hydratedItem);
+      itemsByOrderId.set(orderId as number, orderItems);
+    }
+
+    return orders.map((order) => ({ ...order, items: itemsByOrderId.get(order.id as number) ?? [] }));
   }
 }

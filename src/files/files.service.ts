@@ -57,8 +57,10 @@ export class FilesService {
   }
 
   async deleteFile(fileId: number): Promise<void> {
-    const query = await this.databaseService.query<{ public_id: string; resource_type: string }>(
-      'SELECT public_id, resource_type FROM files WHERE id = $1',
+    const query = await this.databaseService.query<{ public_id: string; resource_type: string; is_order_snapshot: boolean }>(
+      `SELECT public_id, resource_type,
+              EXISTS (SELECT 1 FROM order_item_images WHERE file_id = files.id) AS "isOrderSnapshot"
+       FROM files WHERE id = $1`,
       [fileId],
     );
 
@@ -66,7 +68,10 @@ export class FilesService {
       throw new NotFoundException('File not found');
     }
 
-    const { public_id: publicId, resource_type: resourceType } = query.rows[0];
+    const { public_id: publicId, resource_type: resourceType, is_order_snapshot: isOrderSnapshot } = query.rows[0];
+    if (isOrderSnapshot) {
+      return;
+    }
 
     const destroyed = await this.destroyCloudinaryAsset(publicId, resourceType);
     if (destroyed) {
@@ -84,7 +89,8 @@ export class FilesService {
        LEFT JOIN products p ON p.image_file_id = f.id
        LEFT JOIN product_images pi ON pi.file_id = f.id
        LEFT JOIN orders o ON o.screenshot_file_id = f.id
-       WHERE p.id IS NULL AND pi.id IS NULL AND o.id IS NULL`,
+       LEFT JOIN order_item_images oii ON oii.file_id = f.id
+       WHERE p.id IS NULL AND pi.id IS NULL AND o.id IS NULL AND oii.id IS NULL`,
     );
     return result.rows.map((row) => row.id);
   }
