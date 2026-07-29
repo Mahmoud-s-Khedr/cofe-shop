@@ -58,14 +58,11 @@ export class OrdersService {
         category: string;
         title: string;
         description: string | null;
-        details: string | null;
         imageUrl: string | null;
         price: string;
-        quantity: number | null;
-        is_active: boolean;
         is_available: boolean;
       }>(
-        `SELECT id, category::text, title, description, details, image_url AS "imageUrl", price, quantity, is_active, is_available
+        `SELECT id, category::text, title, description, image_url AS "imageUrl", price, is_available
          FROM products WHERE id = ANY($1::bigint[]) FOR UPDATE`,
         [productIds],
       );
@@ -93,7 +90,6 @@ export class OrdersService {
         category: string;
         title: string;
         description: string | null;
-        details: string | null;
         imageUrl: string | null;
         images: Array<{ fileId: number; url: string }>;
         unitPrice: number;
@@ -106,13 +102,9 @@ export class OrdersService {
         if (!product) {
           throw new BadRequestException(`Product ${item.productId} does not exist`);
         }
-        if (!product.is_active || !product.is_available) {
+        if (!product.is_available) {
           throw new BadRequestException(`Product ${product.title} is not available`);
         }
-        if (product.quantity !== null && item.quantity > product.quantity) {
-          throw new BadRequestException(`Insufficient stock for ${product.title}`);
-        }
-
         const unitPrice = Number(product.price);
         const lineTotal = unitPrice * item.quantity;
         const images = imagesByProductId.get(Number(product.id)) ?? [];
@@ -122,7 +114,6 @@ export class OrdersService {
           category: product.category,
           title: product.title,
           description: product.description,
-          details: product.details,
           imageUrl: product.imageUrl ?? images[0]?.url ?? null,
           images,
           unitPrice,
@@ -154,9 +145,9 @@ export class OrdersService {
       for (const item of lineItems) {
         const insertedItem = await client.query<{ id: number }>(
           `INSERT INTO order_items (
-             order_id, product_id, product_title, product_category, product_description, product_details, image_url,
+             order_id, product_id, product_title, product_category, product_description, image_url,
              unit_price, quantity, line_total
-           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
            RETURNING id`,
           [
             orderId.id,
@@ -164,7 +155,6 @@ export class OrdersService {
             item.title,
             item.category,
             item.description,
-            item.details,
             item.imageUrl,
             item.unitPrice,
             item.quantity,
@@ -180,11 +170,6 @@ export class OrdersService {
           );
         }
 
-        await client.query(
-          `UPDATE products SET quantity = quantity - $1, updated_at = NOW()
-           WHERE id = $2 AND quantity IS NOT NULL`,
-          [item.quantity, item.productId],
-        );
       }
 
       await client.query(
@@ -535,7 +520,6 @@ export class OrdersService {
       productTitle: string;
       category: string | null;
       description: string | null;
-      details: string | null;
       imageUrl: string | null;
       hasSnapshot: boolean;
       unitPrice: string;
@@ -545,7 +529,6 @@ export class OrdersService {
       `SELECT oi.id, oi.order_id AS "orderId", oi.product_id AS "productId", oi.product_title AS "productTitle",
               COALESCE(oi.product_category::text, p.category::text) AS category,
               COALESCE(oi.product_description, p.description) AS description,
-              COALESCE(oi.product_details, p.details) AS details,
               COALESCE(oi.image_url, p.image_url) AS "imageUrl",
               oi.product_category IS NOT NULL AS "hasSnapshot",
               oi.unit_price AS "unitPrice", oi.quantity, oi.line_total AS "lineTotal"

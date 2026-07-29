@@ -37,13 +37,10 @@ class SwaggerTestController {
             category: ProductCategory.coffee,
             title: 'Cappuccino',
             description: 'Espresso with steamed milk foam',
-            details: null,
             price: 250,
-            quantity: null,
             imageUrl: null,
             images: [],
             isAvailable: true,
-            isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
@@ -93,6 +90,7 @@ describe('ErrorResponseDto Swagger', () => {
     expect(document.components?.schemas?.ProductDto?.properties?.images?.items?.$ref).toBe(
       '#/components/schemas/ProductImageDto',
     );
+    expect(document.components?.schemas?.ProductDto?.properties?.isActive).toBeUndefined();
   });
 
   it('serves Swagger UI and docs JSON endpoints', async () => {

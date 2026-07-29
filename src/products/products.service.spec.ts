@@ -32,6 +32,17 @@ describe('ProductsService', () => {
 
       expect(result).toMatchObject({ product: { id: 1, title: 'Latte' } });
     });
+
+    it('queries only available products for the public catalog', async () => {
+      databaseService.query.mockResolvedValue({ rowCount: 1, rows: [{ id: 1, title: 'Latte' }] });
+
+      await service.getProductById(1, true);
+
+      expect(databaseService.query).toHaveBeenCalledWith(
+        expect.stringContaining('id = $1 AND is_available = TRUE'),
+        [1],
+      );
+    });
   });
 
   describe('createProduct', () => {
@@ -45,7 +56,7 @@ describe('ProductsService', () => {
       expect(result).toMatchObject({ product: { id: 5, title: 'Espresso' } });
       expect(databaseService.query).toHaveBeenCalledWith(
         expect.stringContaining('INSERT INTO products (category, title'),
-        ['coffee', 'Espresso', null, null, 150, null],
+        ['coffee', 'Espresso', null, 150],
       );
     });
   });
@@ -56,12 +67,12 @@ describe('ProductsService', () => {
         .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1, category: 'coffee' }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [{ count: '1' }] });
 
-      const result = await service.searchProducts({ category: ProductCategory.coffee }, false);
+      const result = await service.searchProducts({ category: ProductCategory.coffee }, true);
 
       expect(result).toMatchObject({ items: [{ id: 1, category: 'coffee' }], total: 1 });
       expect(databaseService.query).toHaveBeenNthCalledWith(
         1,
-        expect.stringContaining('category = $1'),
+        expect.stringContaining('is_available = TRUE AND category = $1'),
         ['coffee', 20, 0],
       );
     });
@@ -70,6 +81,51 @@ describe('ProductsService', () => {
       await expect(service.searchProducts({ minPrice: 200, maxPrice: 100 }, false)).rejects.toThrow(BadRequestException);
 
       expect(databaseService.query).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('deleteProduct', () => {
+    it('hard-deletes the product and cleans up its image files', async () => {
+      databaseService.query
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ file_id: 20 }] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] });
+
+      await expect(service.deleteProduct(1)).resolves.toEqual({ message: 'Product deleted' });
+
+      expect(databaseService.query).toHaveBeenNthCalledWith(
+        2,
+        'DELETE FROM products WHERE id = $1',
+        [1],
+      );
+      expect(filesService.deleteFile).toHaveBeenCalledWith(20);
+    });
+
+    it('returns not found without attempting file cleanup when the product is absent', async () => {
+      databaseService.query
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+
+      await expect(service.deleteProduct(1)).rejects.toThrow(NotFoundException);
+
+      expect(filesService.deleteFile).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateAvailability', () => {
+    it('returns the product after making it unavailable so an admin can re-enable it', async () => {
+      databaseService.query
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1, isAvailable: false }] });
+
+      await expect(service.updateAvailability(1, { isAvailable: false })).resolves.toMatchObject({
+        product: { id: 1, isAvailable: false },
+      });
+
+      expect(databaseService.query).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining('FROM products WHERE id = $1'),
+        [1],
+      );
     });
   });
 

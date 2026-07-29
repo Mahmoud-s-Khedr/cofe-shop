@@ -100,7 +100,7 @@ For frontend and mobile implementation guidance, see [Module 2 Profile Integrati
 
 | Use Case                    | Main Actor | Description                                                  | Priority  | Status |
 | --------------------------- | ---------- | ------------------------------------------------------------ | --------- | ------ |
-| Add Product                 | Admin      | Admins can add a product to the system. A product includes title, description, amount, price, details, images, and files. | Mandatory | Completed |
+| Add Product                 | Admin      | Admins can add a product to the system. A product includes title, description, price, images, and files. | Mandatory | Completed |
 | Update Product              | Admin      | Admins can update product details.                           | Mandatory | Completed |
 | Delete Product              | Admin      | Admins can delete or deactivate a product.                   | Mandatory | Completed |
 | List and Search Products    | All        | Admins and users can list all products in the system, search products by query, filter products by price range, date range, and availability, and sort results by price or creation date in ascending or descending order. | Mandatory | Completed |

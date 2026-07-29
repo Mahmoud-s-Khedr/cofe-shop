@@ -76,13 +76,10 @@ CREATE TABLE products (
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
-    details TEXT,
     price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
-    quantity INTEGER CHECK (quantity IS NULL OR quantity >= 0),
     image_url TEXT,
     image_file_id BIGINT UNIQUE REFERENCES files(id) ON DELETE SET NULL,
     is_available BOOLEAN NOT NULL DEFAULT TRUE,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -98,8 +95,10 @@ CREATE TABLE product_images (
 
 CREATE INDEX product_images_product_created_idx ON product_images (product_id, id);
 
-CREATE INDEX products_active_available_created_idx
-    ON products (is_active, is_available, created_at DESC);
+CREATE INDEX products_available_created_idx
+    ON products (is_available, created_at DESC);
+CREATE INDEX products_category_available_created_idx
+    ON products (category, is_available, created_at DESC);
 CREATE INDEX products_price_idx ON products (price);
 CREATE INDEX products_search_tsv_idx
     ON products USING GIN (to_tsvector('simple', title || ' ' || COALESCE(description, '')));
@@ -146,7 +145,6 @@ CREATE TABLE order_items (
     product_title TEXT NOT NULL,
     product_category TEXT,
     product_description TEXT,
-    product_details TEXT,
     image_url TEXT,
     unit_price NUMERIC(12,2) NOT NULL CHECK (unit_price >= 0),
     quantity INTEGER NOT NULL CHECK (quantity > 0),

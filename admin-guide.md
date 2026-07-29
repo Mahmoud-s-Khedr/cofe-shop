@@ -17,18 +17,16 @@ This guide documents how an **administrator** uses the BW Café API to manage pr
   "category": "coffee",
   "title": "Cappuccino",
   "description": "Espresso with steamed milk foam",
-  "details": "Contains dairy",
-  "price": 250,
-  "quantity": 50
+  "price": 250
 }
 ```
-`category` is required and must be one of `coffee`, `breakfast`, `burger`, `shawarma`, `tacos`, or `drinks`. `description`, `details`, `quantity` are optional (`quantity: null`/omitted = stock not tracked). New products default to `isAvailable: true, isActive: true`.
+`category` is required and must be one of `coffee`, `breakfast`, `burger`, `shawarma`, `tacos`, or `drinks`. `description` is optional and has no field-level character limit. New products default to `isAvailable: true`.
 
 ### `PATCH /admin/products/:id`
 Same fields as create, all optional — send only what changes.
 
 ### `DELETE /admin/products/:id`
-Soft delete: sets `isActive = false` and `isAvailable = false`. The product row and its historical order references are kept; it just disappears from public listings/detail (it stays visible on old orders' item snapshots regardless, since those are frozen at order time).
+Hard delete: permanently removes the product and its reviews. Historical order item references are set to `null` while their frozen order snapshots remain intact.
 
 ### `PATCH /admin/products/:id/availability`
 ```json
@@ -109,7 +107,7 @@ curl -s -X POST $BASE/auth/login -H 'Content-Type: application/json' \
 
 # 2. Create a product
 curl -s -X POST $BASE/admin/products -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
-  -d '{"category":"coffee","title":"Test Latte","price":300,"quantity":20}'
+  -d '{"category":"coffee","title":"Test Latte","price":300}'
 # -> save .data.product.id as PRODUCT_ID (or check the actual response key)
 
 # 3. Toggle availability off then back on

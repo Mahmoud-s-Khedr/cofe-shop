@@ -230,7 +230,6 @@ Product
 - imageUrl               nullable
 - imageFileId            nullable, unique
 - isAvailable
-- isActive
 - createdAt
 - updatedAt
 ```
@@ -532,12 +531,8 @@ DELETE /api/v1/admin/products/:id/image
 PATCH  /api/v1/admin/products/:id/availability
 ```
 
-`DELETE /products/:id` performs soft deletion:
-
-```text
-isActive = false
-isAvailable = false
-```
+`DELETE /admin/products/:id` permanently deletes the product. Historical order
+snapshots remain available; their `productId` reference becomes `null`.
 
 ## Orders — guest or authenticated user
 

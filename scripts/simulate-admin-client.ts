@@ -76,9 +76,7 @@ async function main(): Promise<void> {
           category: 'coffee',
           title: `Admin Product ${runId}`,
           description: 'Admin-managed simulation product',
-          details: 'Initial details',
           price: 450,
-          quantity: 8,
         },
       });
       const body = expectSuccess(result, 201);
@@ -94,9 +92,7 @@ async function main(): Promise<void> {
         json: {
           title: `${managedProduct.title} Updated`,
           description: 'Updated admin-managed simulation product',
-          details: 'Updated details',
           price: 525,
-          quantity: 10,
         },
       });
       const body = expectSuccess(result, 200);
@@ -197,7 +193,7 @@ async function main(): Promise<void> {
       }
     });
 
-    await ctx.step('product.soft-delete', async () => {
+    await ctx.step('product.hard-delete', async () => {
       const result = await ctx.api<{ message: string }>({
         method: 'DELETE',
         path: `/admin/products/${managedProduct.id}`,
@@ -206,7 +202,7 @@ async function main(): Promise<void> {
       expectSuccess(result, 200);
     });
 
-    await ctx.step('product.soft-delete-hidden-from-list', async () => {
+    await ctx.step('product.hard-delete-hidden-from-list', async () => {
       const result = await ctx.api<{ items: Product[] }>({
         path: '/products',
         query: { search: managedProduct.title, limit: 10 },
@@ -214,11 +210,11 @@ async function main(): Promise<void> {
       const body = expectSuccess(result, 200);
       const items = (body.data as { items: Product[] }).items;
       if (items.some((item) => item.id === managedProduct.id)) {
-        throw new Error('Soft-deleted product still appears in public search');
+        throw new Error('Hard-deleted product still appears in public search');
       }
     });
 
-    await ctx.step('product.soft-delete-detail-404', async () => {
+    await ctx.step('product.hard-delete-detail-404', async () => {
       const result = await ctx.api<unknown>({
         path: `/products/${managedProduct.id}`,
       });

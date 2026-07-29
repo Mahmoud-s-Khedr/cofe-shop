@@ -48,8 +48,8 @@ export class AdminProductsController {
 
   @Delete(':id')
   @ApiParam({ name: 'id', type: Number })
-  @ApiOperation({ summary: 'Deactivate a product (soft delete, admin only)' })
-  @ApiResponse({ status: 200, description: 'Product deactivated' })
+  @ApiOperation({ summary: 'Permanently delete a product (admin only)' })
+  @ApiResponse({ status: 200, description: 'Product deleted' })
   @ApiResponse({ status: 404, description: 'Product not found', type: ErrorResponseDto })
   remove(@Param() params: IdParamDto): Promise<Record<string, unknown>> {
     return this.productsService.deleteProduct(params.id);

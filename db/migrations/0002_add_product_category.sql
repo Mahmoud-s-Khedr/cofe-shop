@@ -27,7 +27,7 @@ WHERE category IS NULL;
 ALTER TABLE products
     ALTER COLUMN category SET NOT NULL;
 
-CREATE INDEX IF NOT EXISTS products_category_active_created_idx
-    ON products (category, is_active, created_at DESC);
+CREATE INDEX IF NOT EXISTS products_category_available_created_idx
+    ON products (category, is_available, created_at DESC);
 
 COMMIT;

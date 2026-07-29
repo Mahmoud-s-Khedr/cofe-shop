@@ -7,10 +7,10 @@ export type DevSeedSummary = {
   productsCreated: number;
 };
 
-const DEMO_PRODUCTS: Array<{ category: ProductCategory; title: string; description: string; price: number; quantity: number | null }> = [
-  { category: ProductCategory.coffee, title: 'Espresso', description: 'Single shot of rich espresso', price: 150, quantity: null },
-  { category: ProductCategory.coffee, title: 'Cappuccino', description: 'Espresso with steamed milk foam', price: 250, quantity: null },
-  { category: ProductCategory.breakfast, title: 'Croissant', description: 'Buttery, flaky pastry', price: 200, quantity: 30 },
+const DEMO_PRODUCTS: Array<{ category: ProductCategory; title: string; description: string; price: number }> = [
+  { category: ProductCategory.coffee, title: 'Espresso', description: 'Single shot of rich espresso', price: 150 },
+  { category: ProductCategory.coffee, title: 'Cappuccino', description: 'Espresso with steamed milk foam', price: 250 },
+  { category: ProductCategory.breakfast, title: 'Croissant', description: 'Buttery, flaky pastry', price: 200 },
 ];
 
 export function parseDevSeedInput(): DevSeedInput {
@@ -28,8 +28,8 @@ export async function runDevSeed(client: Pick<PoolClient, 'query'>): Promise<Dev
     }
 
     await client.query(
-      `INSERT INTO products (category, title, description, price, quantity) VALUES ($1, $2, $3, $4, $5)`,
-      [product.category, product.title, product.description, product.price, product.quantity],
+      `INSERT INTO products (category, title, description, price) VALUES ($1, $2, $3, $4)`,
+      [product.category, product.title, product.description, product.price],
     );
     productsCreated += 1;
   }

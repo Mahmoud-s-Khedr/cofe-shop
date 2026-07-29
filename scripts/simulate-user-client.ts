@@ -86,9 +86,7 @@ async function main(): Promise<void> {
             category: 'coffee',
             title,
             description: `Bootstrap product ${index + 1}`,
-            details: 'Client simulation bootstrap',
             price: 200 + index * 75,
-            quantity: 25,
           },
         });
         const body = expectSuccess(result, 201);

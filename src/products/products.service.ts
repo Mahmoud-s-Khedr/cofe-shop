@@ -9,14 +9,14 @@ import { SearchProductsDto } from './dto/search-products.dto';
 import { UpdateAvailabilityDto } from './dto/update-availability.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 
-const PRODUCT_COLUMNS = `id, category, title, description, details, price, quantity, image_url AS "imageUrl",
+const PRODUCT_COLUMNS = `id, category, title, description, price, image_url AS "imageUrl",
   COALESCE((
     SELECT json_agg(json_build_object('fileId', pi.file_id, 'url', f.url) ORDER BY pi.id)
     FROM product_images pi
     INNER JOIN files f ON f.id = pi.file_id
     WHERE pi.product_id = products.id
   ), '[]'::json) AS images,
-  is_available AS "isAvailable", is_active AS "isActive",
+  is_available AS "isAvailable",
   created_at::text AS "createdAt", updated_at::text AS "updatedAt"`;
 
 @Injectable()
@@ -26,7 +26,7 @@ export class ProductsService {
     private readonly filesService: FilesService,
   ) {}
 
-  async searchProducts(dto: SearchProductsDto, includeInactive: boolean): Promise<Record<string, unknown>> {
+  async searchProducts(dto: SearchProductsDto, onlyAvailable: boolean): Promise<Record<string, unknown>> {
     if (dto.minPrice !== undefined && dto.maxPrice !== undefined && dto.minPrice > dto.maxPrice) {
       throw new BadRequestException('minPrice cannot be greater than maxPrice');
     }
@@ -34,8 +34,8 @@ export class ProductsService {
     const clauses: string[] = [];
     const params: unknown[] = [];
 
-    if (!includeInactive) {
-      clauses.push('is_active = TRUE');
+    if (onlyAvailable) {
+      clauses.push('is_available = TRUE');
     }
     if (dto.available !== undefined) {
       params.push(dto.available);
@@ -77,8 +77,8 @@ export class ProductsService {
     return { items: items.rows, total: Number(total.rows[0].count) };
   }
 
-  async getProductById(productId: number, includeInactive: boolean): Promise<Record<string, unknown>> {
-    const product = await this.fetchProduct(productId, includeInactive);
+  async getProductById(productId: number, onlyAvailable: boolean): Promise<Record<string, unknown>> {
+    const product = await this.fetchProduct(productId, onlyAvailable);
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -87,13 +87,13 @@ export class ProductsService {
 
   async createProduct(dto: CreateProductDto): Promise<Record<string, unknown>> {
     const insert = await this.databaseService.query<{ id: number }>(
-      `INSERT INTO products (category, title, description, details, price, quantity)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO products (category, title, description, price)
+       VALUES ($1, $2, $3, $4)
        RETURNING id`,
-      [dto.category, dto.title, dto.description ?? null, dto.details ?? null, dto.price, dto.quantity ?? null],
+      [dto.category, dto.title, dto.description ?? null, dto.price],
     );
 
-    return { product: await this.fetchProduct(insert.rows[0].id, true) };
+    return { product: await this.fetchProduct(insert.rows[0].id, false) };
   }
 
   async updateProduct(productId: number, dto: UpdateProductDto): Promise<Record<string, unknown>> {
@@ -104,15 +104,13 @@ export class ProductsService {
        SET category = COALESCE($1, category),
            title = COALESCE($2, title),
            description = COALESCE($3, description),
-           details = COALESCE($4, details),
-           price = COALESCE($5, price),
-           quantity = COALESCE($6, quantity),
+           price = COALESCE($4, price),
            updated_at = NOW()
-       WHERE id = $7`,
-      [dto.category ?? null, dto.title ?? null, dto.description ?? null, dto.details ?? null, dto.price ?? null, dto.quantity ?? null, productId],
+       WHERE id = $5`,
+      [dto.category ?? null, dto.title ?? null, dto.description ?? null, dto.price ?? null, productId],
     );
 
-    return { product: await this.fetchProduct(productId, true) };
+    return { product: await this.fetchProduct(productId, false) };
   }
 
   async updateAvailability(productId: number, dto: UpdateAvailabilityDto): Promise<Record<string, unknown>> {
@@ -123,19 +121,29 @@ export class ProductsService {
     if (!result.rowCount) {
       throw new NotFoundException('Product not found');
     }
-    return { product: await this.fetchProduct(productId, true) };
+    return { product: await this.fetchProduct(productId, false) };
   }
 
-  /** Soft delete: deactivate rather than physically remove, so historical order items stay intact. */
   async deleteProduct(productId: number): Promise<Record<string, unknown>> {
+    const files = await this.databaseService.query<{ file_id: number }>(
+      `SELECT file_id FROM product_images WHERE product_id = $1
+       UNION
+       SELECT image_file_id AS file_id FROM products WHERE id = $1 AND image_file_id IS NOT NULL`,
+      [productId],
+    );
     const result = await this.databaseService.query(
-      'UPDATE products SET is_active = FALSE, is_available = FALSE, updated_at = NOW() WHERE id = $1',
+      'DELETE FROM products WHERE id = $1',
       [productId],
     );
     if (!result.rowCount) {
       throw new NotFoundException('Product not found');
     }
-    return { message: 'Product deactivated' };
+
+    for (const file of files.rows) {
+      await this.filesService.deleteFile(Number(file.file_id));
+    }
+
+    return { message: 'Product deleted' };
   }
 
   async addImage(
@@ -164,7 +172,7 @@ export class ProductsService {
       throw error;
     }
 
-    return { product: await this.fetchProduct(productId, true) };
+    return { product: await this.fetchProduct(productId, false) };
   }
 
   async removeImage(productId: number, fileId: number): Promise<Record<string, unknown>> {
@@ -199,7 +207,7 @@ export class ProductsService {
     );
     await this.filesService.deleteFile(previousFileId);
 
-    return { product: await this.fetchProduct(productId, true) };
+    return { product: await this.fetchProduct(productId, false) };
   }
 
   private async assertProductExists(productId: number): Promise<void> {
@@ -209,8 +217,8 @@ export class ProductsService {
     }
   }
 
-  private async fetchProduct(productId: number, includeInactive: boolean): Promise<Record<string, unknown> | null> {
-    const whereClause = includeInactive ? 'id = $1' : 'id = $1 AND is_active = TRUE';
+  private async fetchProduct(productId: number, onlyAvailable: boolean): Promise<Record<string, unknown> | null> {
+    const whereClause = onlyAvailable ? 'id = $1 AND is_available = TRUE' : 'id = $1';
     const result = await this.databaseService.query(`SELECT ${PRODUCT_COLUMNS} FROM products WHERE ${whereClause}`, [
       productId,
     ]);

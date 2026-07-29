@@ -111,7 +111,6 @@ Important product fields:
 - `amount`
 - `price`
 - `details`
-- `is_active`
 - `images[]`
 - `files[]`
 
@@ -354,7 +353,6 @@ Important order item fields:
 - `product.title`
 - `product.description`
 - `product.price`
-- `product.is_active`
 
 ### `PATCH /api/orders/:id/address`
 

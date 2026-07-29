@@ -23,14 +23,8 @@ export class ProductDto {
   @ApiPropertyOptional({ example: 'Espresso with steamed milk foam', nullable: true })
   description!: string | null;
 
-  @ApiPropertyOptional({ example: 'Contains dairy', nullable: true })
-  details!: string | null;
-
   @ApiProperty({ example: 250 })
   price!: number;
-
-  @ApiPropertyOptional({ example: 50, nullable: true, description: 'null means stock is not tracked' })
-  quantity!: number | null;
 
   @ApiPropertyOptional({ example: 'https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg', nullable: true })
   imageUrl!: string | null;
@@ -40,9 +34,6 @@ export class ProductDto {
 
   @ApiProperty({ example: true })
   isAvailable!: boolean;
-
-  @ApiProperty({ example: true })
-  isActive!: boolean;
 
   @ApiProperty({ example: '2026-03-28T12:00:00.000Z' })
   createdAt!: string;

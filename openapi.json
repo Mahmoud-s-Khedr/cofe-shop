@@ -563,7 +563,7 @@
             }
           }
         },
-        "summary": "Search/list active products",
+        "summary": "Search/list available products",
         "tags": [
           "Products"
         ]
@@ -605,7 +605,7 @@
             }
           }
         },
-        "summary": "Get a single active product",
+        "summary": "Get a single available product",
         "tags": [
           "Products"
         ]
@@ -913,7 +913,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Product deactivated"
+            "description": "Product deleted"
           },
           "404": {
             "description": "Product not found",
@@ -931,7 +931,7 @@
             "bearer": []
           }
         ],
-        "summary": "Deactivate a product (soft delete, admin only)",
+        "summary": "Permanently delete a product (admin only)",
         "tags": [
           "Admin"
         ]
@@ -1049,6 +1049,7 @@
             "required": true,
             "in": "path",
             "schema": {
+              "minimum": 1,
               "type": "number"
             }
           }
@@ -2351,20 +2352,9 @@
             "nullable": true,
             "example": "Espresso with steamed milk foam"
           },
-          "details": {
-            "type": "string",
-            "nullable": true,
-            "example": "Contains dairy"
-          },
           "price": {
             "type": "number",
             "example": 250
-          },
-          "quantity": {
-            "type": "number",
-            "nullable": true,
-            "example": 50,
-            "description": "null means stock is not tracked"
           },
           "imageUrl": {
             "type": "string",
@@ -2379,10 +2369,6 @@
             }
           },
           "isAvailable": {
-            "type": "boolean",
-            "example": true
-          },
-          "isActive": {
             "type": "boolean",
             "example": true
           },
@@ -2402,7 +2388,6 @@
           "price",
           "images",
           "isAvailable",
-          "isActive",
           "createdAt",
           "updatedAt"
         ]
@@ -2626,28 +2611,14 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2000,
-            "description": "Short description (1–2000 chars)",
+            "description": "Product description",
             "example": "Espresso with steamed milk foam"
-          },
-          "details": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000,
-            "description": "Additional free-text details",
-            "example": "Contains dairy"
           },
           "price": {
             "type": "number",
             "minimum": 0,
             "description": "Price in the local currency",
             "example": 250
-          },
-          "quantity": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Stock quantity; omit to not track stock",
-            "example": 50
           }
         },
         "required": [
@@ -2678,28 +2649,14 @@
           "description": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 2000,
-            "description": "Short description (1–2000 chars)",
+            "description": "Product description",
             "example": "Espresso with steamed milk foam"
-          },
-          "details": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 2000,
-            "description": "Additional free-text details",
-            "example": "Contains dairy"
           },
           "price": {
             "type": "number",
             "minimum": 0,
             "description": "Price in the local currency",
             "example": 250
-          },
-          "quantity": {
-            "type": "number",
-            "minimum": 0,
-            "description": "Stock quantity; omit to not track stock",
-            "example": 50
           }
         }
       },
@@ -2758,11 +2715,6 @@
             "type": "string",
             "nullable": true,
             "example": "Espresso with steamed milk foam"
-          },
-          "details": {
-            "type": "string",
-            "nullable": true,
-            "example": "Contains dairy"
           },
           "imageUrl": {
             "type": "string",

@@ -24,7 +24,7 @@ This guide documents how a **guest** (no account) or a **registered customer** u
     "error": { "code": 409, "message": "Conflict", "timestamp": "2026-07-13T12:00:00.000Z", "path": "/api/v1/orders" }
   }
   ```
-- Auth mechanisms:
+- Auth mechanisms:how
   - **Registered user**: `Authorization: Bearer <accessToken>` (obtained from login/refresh).
   - **Guest, on their own order only**: `X-Order-Token: <guestAccessToken>` header — the token is handed back exactly once, in the response of `POST /orders`. There is no way to recover it later, so the frontend must persist it (e.g. localStorage) if the guest should be able to check the order again.
 - All endpoints below accept/return JSON except the two file-upload endpoints noted, which are `multipart/form-data`.
@@ -41,7 +41,7 @@ Query params (all optional):
 | `offset` | number ≥ 0 | |
 | `search` | string | free-text search over title/description |
 | `minPrice` / `maxPrice` | number | |
-| `available` | boolean | filter to `isAvailable = true` |
+| `available` | boolean | compatibility filter; public results are always available, so `false` returns no products |
 | `category` | `coffee` \| `breakfast` \| `burger` \| `shawarma` \| `tacos` \| `drinks` | filter to a menu category |
 | `sort` | `price_asc` \| `price_desc` \| `newest` | |
 
@@ -63,7 +63,6 @@ Example: `GET /api/v1/products?category=coffee&search=latte&available=true&sort=
         "quantity": 50,
         "imageUrl": "https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg",
         "isAvailable": true,
-        "isActive": true,
         "createdAt": "2026-03-28T12:00:00.000Z",
         "updatedAt": "2026-03-28T12:00:00.000Z"
       }
@@ -150,7 +149,7 @@ Works identically whether or not you're logged in — if you send `Authorization
 
 - `address` is optional for delivery orders. `orderType: "PICKUP"` requires `pickupTime` (ISO datetime); pickup orders do not use an address.
 - **Never send price or total** — the server always recalculates from the current DB price of each product and ignores any client-supplied amounts.
-- Ordering an inactive/unavailable product, or a quantity exceeding tracked stock, is rejected.
+- Ordering an unavailable product is rejected.
 
 Response `data.order` (`OrderDto`):
 ```json

@@ -25,9 +25,6 @@ export class OrderItemDto {
   @ApiPropertyOptional({ nullable: true, example: 'Espresso with steamed milk foam' })
   description!: string | null;
 
-  @ApiPropertyOptional({ nullable: true, example: 'Contains dairy' })
-  details!: string | null;
-
   @ApiPropertyOptional({ nullable: true, example: 'https://res.cloudinary.com/demo/image/upload/bw-cafe/products/1.jpg' })
   imageUrl!: string | null;
 

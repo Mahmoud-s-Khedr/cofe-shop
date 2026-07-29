@@ -43,7 +43,7 @@ describe('OrdersService', () => {
       // 1) lock products
       query.mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: 'https://images.example/latte.jpg', price: '250.00', quantity: null, is_active: true, is_available: true }],
+        rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, imageUrl: 'https://images.example/latte.jpg', price: '250.00', is_available: true }],
       });
       // 2) fetch product images
       query.mockResolvedValueOnce({ rowCount: 1, rows: [{ productId: 1, fileId: 12, url: 'https://images.example/latte.jpg' }] });
@@ -53,21 +53,19 @@ describe('OrdersService', () => {
       query.mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1 }] });
       // 5) insert order-item image snapshot
       query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
-      // 6) decrement stock (no-op since quantity is null)
-      query.mockResolvedValueOnce({ rowCount: 0, rows: [] });
-      // 7) insert status history
+      // 6) insert status history
       query.mockResolvedValueOnce({ rowCount: 1, rows: [] });
-      // 8) fetchOrder: order row
+      // 7) fetchOrder: order row
       query.mockResolvedValueOnce({
         rowCount: 1,
         rows: [{ id: '99', orderNumber: 'BW-TEST-0001', userId: null, status: 'PENDING', subtotal: '500.00', total: '500.00' }],
       });
-      // 9) fetchOrder: items row
+      // 8) fetchOrder: items row
       query.mockResolvedValueOnce({
         rowCount: 1,
-        rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, details: null, imageUrl: 'https://images.example/latte.jpg', hasSnapshot: true, unitPrice: '250.00', quantity: 2 }],
+        rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, imageUrl: 'https://images.example/latte.jpg', hasSnapshot: true, unitPrice: '250.00', quantity: 2 }],
       });
-      // 10) fetchOrder: snapshot images
+      // 9) fetchOrder: snapshot images
       query.mockResolvedValueOnce({ rowCount: 1, rows: [{ orderItemId: 1, fileId: 12, url: 'https://images.example/latte.jpg' }] });
 
       const client = buildClient(query);
@@ -90,6 +88,7 @@ describe('OrdersService', () => {
         expect.stringContaining('INSERT INTO order_item_images'),
         [1, 12, 'https://images.example/latte.jpg', 0],
       );
+      expect(query.mock.calls.some(([sql]) => typeof sql === 'string' && sql.includes('UPDATE products SET quantity'))).toBe(false);
     });
 
     it('accepts delivery orders without an address', async () => {
@@ -97,12 +96,11 @@ describe('OrdersService', () => {
       query
         .mockResolvedValueOnce({
           rowCount: 1,
-          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: null, price: '250.00', quantity: null, is_active: true, is_available: true }],
+          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, imageUrl: null, price: '250.00', is_available: true }],
         })
         .mockResolvedValueOnce({ rowCount: 0, rows: [] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 99 }] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1 }] })
-        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
         .mockResolvedValueOnce({ rowCount: 1, rows: [] })
         .mockResolvedValueOnce({
           rowCount: 1,
@@ -110,7 +108,7 @@ describe('OrdersService', () => {
         })
         .mockResolvedValueOnce({
           rowCount: 1,
-          rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, details: null, imageUrl: null, hasSnapshot: false, unitPrice: '250.00', quantity: 1 }],
+          rows: [{ id: '1', orderId: '99', productId: '1', productTitle: 'Latte', category: 'coffee', description: null, imageUrl: null, hasSnapshot: false, unitPrice: '250.00', quantity: 1 }],
         })
         .mockResolvedValueOnce({ rowCount: 0, rows: [] })
         .mockResolvedValueOnce({ rowCount: 0, rows: [] });
@@ -126,12 +124,12 @@ describe('OrdersService', () => {
       ).resolves.toBeDefined();
     });
 
-    it('rejects inactive products', async () => {
+    it('rejects unavailable products', async () => {
       const query = jest
         .fn()
         .mockResolvedValueOnce({
           rowCount: 1,
-          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, details: null, imageUrl: null, price: '250.00', quantity: null, is_active: false, is_available: true }],
+          rows: [{ id: 1, category: 'coffee', title: 'Latte', description: null, imageUrl: null, price: '250.00', is_available: false }],
         })
         .mockResolvedValueOnce({ rowCount: 0, rows: [] });
       const client = buildClient(query);
