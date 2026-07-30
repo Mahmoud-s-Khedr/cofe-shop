@@ -28,6 +28,8 @@ type Order = {
   items: Array<{ id: number; productId: number | null }>;
   rejectionReason?: string | null;
   cancellationReason?: string | null;
+  paymentMethod?: 'CASH' | 'BANK' | null;
+  bankName?: string | null;
 };
 
 type User = {
@@ -324,11 +326,11 @@ async function main(): Promise<void> {
         method: 'PATCH',
         path: `/admin/orders/${sharedState.orders!.guestPickupLifecycle.orderNumber}/status`,
         token: adminToken,
-        json: { status: 'COMPLETED', note: 'Pickup order handed to customer' },
+        json: { status: 'COMPLETED', paymentMethod: 'CASH', note: 'Pickup order handed to customer' },
       });
       const body = expectSuccess(result, 200);
       const order = (body.data as { order: Order }).order;
-      if (order.status !== 'COMPLETED') {
+      if (order.status !== 'COMPLETED' || order.paymentMethod !== 'CASH' || order.bankName !== null) {
         throw new Error(`Expected COMPLETED status, received ${order.status}`);
       }
     });

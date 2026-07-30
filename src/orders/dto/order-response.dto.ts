@@ -93,6 +93,12 @@ export class OrderDto {
   @ApiPropertyOptional({ nullable: true })
   rejectionReason!: string | null;
 
+  @ApiPropertyOptional({ enum: ['CASH', 'BANK'], nullable: true, description: 'Recorded for completed pickup orders' })
+  paymentMethod!: string | null;
+
+  @ApiPropertyOptional({ nullable: true, description: 'Recorded when a completed pickup order was paid by bank' })
+  bankName!: string | null;
+
   @ApiProperty({ example: '2026-07-13T12:00:00.000Z' })
   createdAt!: string;
 

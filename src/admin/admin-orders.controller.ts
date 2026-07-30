@@ -46,6 +46,8 @@ export class AdminOrdersController {
     return this.ordersService.adminTransitionStatus(params.orderNumber, admin.sub, dto.status, {
       reason: dto.reason,
       note: dto.note,
+      paymentMethod: dto.paymentMethod,
+      bankName: dto.bankName,
     });
   }
 }

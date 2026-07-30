@@ -72,12 +72,18 @@ or, for a rejection:
 - `REJECTED`, `CANCELLED`, `COMPLETED` are terminal — no further transitions.
 - `READY` is only valid for `PICKUP` orders.
 - `OUT_FOR_DELIVERY` is only valid for `DELIVERY` orders.
+- Completing a pickup order (`READY → COMPLETED`) requires `paymentMethod`: `CASH` or `BANK`. Bank payments also require `bankName`; cash payments store no bank name. Delivery completion is unchanged.
 - Admins can cancel any non-terminal order (unlike customers, who can only cancel `PENDING`/`CONFIRMED`).
 - Every transition is recorded in an internal status-history log (not directly exposed via API today, but drives the audit trail).
 
 Valid path (delivery): `PENDING → CONFIRMED → PREPARING → OUT_FOR_DELIVERY → COMPLETED`
 Valid path (pickup): `PENDING → CONFIRMED → PREPARING → READY → COMPLETED`
 Either can branch to `REJECTED` (only from `PENDING`) or `CANCELLED` (from any non-terminal state, admin-initiated).
+
+Example pickup completion:
+```json
+{ "status": "COMPLETED", "paymentMethod": "BANK", "bankName": "Bank of Mauritania" }
+```
 
 ## 4. User management
 

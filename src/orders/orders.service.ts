@@ -10,13 +10,14 @@ import { CancelOrderDto } from './dto/cancel-order.dto';
 import { ListMyOrdersQueryDto } from './dto/list-my-orders-query.dto';
 import { generateOrderNumber } from './order-number.util';
 import { generateGuestAccessToken, hashGuestAccessToken } from './guest-token.util';
-import { assertValidAdminTransition, OrderStatus } from './order-status.util';
+import { assertValidAdminTransition, OrderStatus, PaymentMethod } from './order-status.util';
 
 const ORDER_COLUMNS = `id, order_number AS "orderNumber", user_id AS "userId", customer_name AS "customerName",
   customer_phone AS "customerPhone", order_type AS "orderType", address, pickup_time::text AS "pickupTime",
   status, screenshot_url AS "screenshotUrl", screenshot_file_id AS "screenshotFileId",
   subtotal, delivery_fee AS "deliveryFee", total, currency, customer_notes AS "customerNotes",
   cancellation_reason AS "cancellationReason", rejection_reason AS "rejectionReason",
+  payment_method AS "paymentMethod", bank_name AS "bankName",
   guest_access_token_hash AS "guestAccessTokenHash",
   created_at::text AS "createdAt", updated_at::text AS "updatedAt"`;
 
@@ -338,7 +339,7 @@ export class OrdersService {
     orderNumber: string,
     adminUserId: number,
     next: OrderStatus,
-    opts: { reason?: string; note?: string },
+    opts: { reason?: string; note?: string; paymentMethod?: PaymentMethod; bankName?: string },
   ): Promise<Record<string, unknown>> {
     return this.databaseService.withTransaction(async (client) => {
       const order = await this.fetchOrder(client, orderNumber, true);
@@ -353,20 +354,26 @@ export class OrdersService {
         order.orderType as 'DELIVERY' | 'PICKUP',
         Boolean(order.screenshotFileId),
         Boolean(opts.reason),
+        opts.paymentMethod,
+        opts.bankName,
       );
 
       const timestampColumn = this.timestampColumnFor(next);
+      const isPickupCompletion = current === 'READY' && next === 'COMPLETED' && order.orderType === 'PICKUP';
       const setClauses = [
         'status = $1',
         'updated_at = NOW()',
         ...(timestampColumn ? [`${timestampColumn} = NOW()`] : []),
         ...(next === 'REJECTED' ? ['rejection_reason = $2'] : []),
         ...(next === 'CANCELLED' ? ['cancellation_reason = $2'] : []),
+        ...(isPickupCompletion ? ['payment_method = $2', 'bank_name = $3'] : []),
       ];
-      const reasonParam = next === 'REJECTED' || next === 'CANCELLED' ? (opts.reason ?? null) : null;
-      const params = setClauses.includes('rejection_reason = $2') || setClauses.includes('cancellation_reason = $2')
-        ? [next, reasonParam, order.id]
-        : [next, order.id];
+      const reasonParam = opts.reason ?? null;
+      const params = isPickupCompletion
+        ? [next, opts.paymentMethod, opts.paymentMethod === 'BANK' ? opts.bankName!.trim() : null, order.id]
+        : setClauses.includes('rejection_reason = $2') || setClauses.includes('cancellation_reason = $2')
+          ? [next, reasonParam, order.id]
+          : [next, order.id];
       const whereIdIndex = params.length;
 
       await client.query(`UPDATE orders SET ${setClauses.join(', ')} WHERE id = $${whereIdIndex}`, params);

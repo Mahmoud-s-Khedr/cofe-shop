@@ -200,6 +200,8 @@ PENDING
 ```
 `REJECTED`, `CANCELLED`, `COMPLETED` are terminal — no further status changes.
 
+For completed pickup orders, the returned order also includes the payment details recorded by the admin: `paymentMethod` (`CASH` or `BANK`) and, for bank payments, `bankName`.
+
 ## 6. Order history (registered users only)
 
 - **`GET /me/orders`** — paginated (`page`, `limit`, `offset`) list of your own orders, newest first. Guests cannot list history — the `X-Order-Token` only ever unlocks a single order, not a list.

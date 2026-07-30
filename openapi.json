@@ -2832,6 +2832,20 @@
             "type": "string",
             "nullable": true
           },
+          "paymentMethod": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "CASH",
+              "BANK"
+            ],
+            "description": "Recorded for completed pickup orders"
+          },
+          "bankName": {
+            "type": "string",
+            "nullable": true,
+            "description": "Recorded when a completed pickup order was paid by bank"
+          },
           "createdAt": {
             "type": "string",
             "example": "2026-07-13T12:00:00.000Z"
@@ -2961,6 +2975,22 @@
             "minLength": 1,
             "maxLength": 500,
             "example": "Confirmed after reviewing screenshot"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "BANK"
+            ],
+            "description": "Required when completing a pickup order",
+            "example": "CASH"
+          },
+          "bankName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150,
+            "description": "Required when paymentMethod is BANK for pickup completion",
+            "example": "Bank of Mauritania"
           }
         },
         "required": [

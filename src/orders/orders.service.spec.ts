@@ -279,4 +279,32 @@ describe('OrdersService', () => {
     });
   });
 
+  describe('adminTransitionStatus', () => {
+    it('stores cash payment details when completing a pickup order', async () => {
+      const query = jest
+        .fn()
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: '10', orderNumber: 'BW-X', orderType: 'PICKUP', status: 'READY', screenshotFileId: null }],
+        })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [] })
+        .mockResolvedValueOnce({
+          rowCount: 1,
+          rows: [{ id: '10', orderNumber: 'BW-X', orderType: 'PICKUP', status: 'COMPLETED', paymentMethod: 'CASH', bankName: null }],
+        })
+        .mockResolvedValueOnce({ rowCount: 0, rows: [] });
+      const service = new OrdersService(buildDatabaseService(buildClient(query)) as any, filesService as any);
+
+      const result = await service.adminTransitionStatus('BW-X', 1, 'COMPLETED', { paymentMethod: 'CASH' });
+
+      expect(query).toHaveBeenCalledWith(
+        expect.stringContaining('payment_method = $2, bank_name = $3'),
+        ['COMPLETED', 'CASH', null, 10],
+      );
+      expect(result).toMatchObject({ order: { status: 'COMPLETED', paymentMethod: 'CASH', bankName: null } });
+    });
+  });
+
 });

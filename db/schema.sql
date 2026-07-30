@@ -123,6 +123,8 @@ CREATE TABLE orders (
     customer_notes TEXT,
     cancellation_reason TEXT,
     rejection_reason TEXT,
+    payment_method TEXT,
+    bank_name TEXT,
     guest_access_token_hash TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -131,7 +133,12 @@ CREATE TABLE orders (
     cancelled_at TIMESTAMPTZ,
     rejected_at TIMESTAMPTZ,
     CONSTRAINT orders_pickup_time_required_check
-        CHECK (order_type <> 'PICKUP' OR pickup_time IS NOT NULL)
+        CHECK (order_type <> 'PICKUP' OR pickup_time IS NOT NULL),
+    CONSTRAINT orders_payment_details_check CHECK (
+        (payment_method IS NULL AND bank_name IS NULL)
+        OR (payment_method = 'CASH' AND bank_name IS NULL)
+        OR (payment_method = 'BANK' AND bank_name IS NOT NULL)
+    )
 );
 
 CREATE INDEX orders_user_created_idx ON orders (user_id, created_at DESC);

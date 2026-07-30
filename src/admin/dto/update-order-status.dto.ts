@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, Length, ValidateIf } from 'class-validator';
 
 export class UpdateOrderStatusDto {
   @ApiProperty({
@@ -20,4 +20,23 @@ export class UpdateOrderStatusDto {
   @IsString()
   @Length(1, 500)
   note?: string;
+
+  @ApiPropertyOptional({
+    enum: ['CASH', 'BANK'],
+    description: 'Required when completing a pickup order',
+    example: 'CASH',
+  })
+  @IsOptional()
+  @IsEnum(['CASH', 'BANK'])
+  paymentMethod?: 'CASH' | 'BANK';
+
+  @ApiPropertyOptional({
+    description: 'Required when paymentMethod is BANK for pickup completion',
+    example: 'Bank of Mauritania',
+  })
+  @ValidateIf((dto: UpdateOrderStatusDto) => dto.paymentMethod === 'BANK')
+  @IsString()
+  @IsNotEmpty()
+  @Length(1, 150)
+  bankName?: string;
 }

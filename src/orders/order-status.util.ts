@@ -10,6 +10,8 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'REJECTED';
 
+export type PaymentMethod = 'CASH' | 'BANK';
+
 export const TERMINAL_STATUSES: ReadonlySet<OrderStatus> = new Set(['COMPLETED', 'CANCELLED', 'REJECTED']);
 
 const NEXT_STATUSES: Record<OrderStatus, OrderStatus[]> = {
@@ -29,6 +31,8 @@ export function assertValidAdminTransition(
   orderType: 'DELIVERY' | 'PICKUP',
   hasScreenshot: boolean,
   hasReason: boolean,
+  paymentMethod?: PaymentMethod,
+  bankName?: string,
 ): void {
   if (TERMINAL_STATUSES.has(current)) {
     throw new BadRequestException(`Order is already ${current} and cannot change status`);
@@ -47,5 +51,16 @@ export function assertValidAdminTransition(
   }
   if (next === 'OUT_FOR_DELIVERY' && orderType !== 'DELIVERY') {
     throw new BadRequestException('Only delivery orders can become OUT_FOR_DELIVERY');
+  }
+  if (current === 'READY' && next === 'COMPLETED' && orderType === 'PICKUP') {
+    if (!paymentMethod) {
+      throw new BadRequestException('Pickup completion requires a payment method');
+    }
+    if (paymentMethod === 'BANK' && !bankName?.trim()) {
+      throw new BadRequestException('Bank payment requires a bank name');
+    }
+    if (paymentMethod === 'CASH' && bankName) {
+      throw new BadRequestException('Cash payment cannot include a bank name');
+    }
   }
 }
