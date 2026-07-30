@@ -11,6 +11,9 @@ This guide documents how an **administrator** uses the BW Café API to manage pr
 
 ## 2. Product management
 
+### `GET /products`
+Use the existing catalog endpoint with an admin access token: `GET /products`. Unlike guest and regular-user requests, the admin response includes both available and unavailable products. Use `available=true` or `available=false` to filter by availability; the remaining catalog filters and pagination options work as usual.
+
 ### `POST /admin/products`
 ```json
 {

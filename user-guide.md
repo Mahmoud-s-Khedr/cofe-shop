@@ -32,7 +32,7 @@ This guide documents how a **guest** (no account) or a **registered customer** u
 ## 2. Browsing products (no auth required)
 
 ### `GET /products`
-Query params (all optional):
+Query params (all optional unless noted):
 
 | param | type | notes |
 |---|---|---|
@@ -41,11 +41,14 @@ Query params (all optional):
 | `offset` | number ≥ 0 | |
 | `search` | string | free-text search over title/description |
 | `minPrice` / `maxPrice` | number | |
-| `available` | boolean | compatibility filter; public results are always available, so `false` returns no products |
 | `category` | `coffee` \| `breakfast` \| `burger` \| `shawarma` \| `tacos` \| `drinks` | filter to a menu category |
 | `sort` | `price_asc` \| `price_desc` \| `newest` | |
 
-Example: `GET /api/v1/products?category=coffee&search=latte&available=true&sort=price_asc`
+Guest and regular-user requests always return available products only. They must not send `available`; doing so returns `403`.
+
+An authenticated admin may send `Authorization: Bearer <accessToken>` to list both available and unavailable products. Admins can optionally add `available=true` or `available=false` to filter by that state.
+
+Public example: `GET /api/v1/products?category=coffee&search=latte&sort=price_asc`
 
 ```json
 {

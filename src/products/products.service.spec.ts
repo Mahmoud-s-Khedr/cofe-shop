@@ -62,6 +62,35 @@ describe('ProductsService', () => {
   });
 
   describe('searchProducts', () => {
+    it('does not constrain availability when an admin lists all products', async () => {
+      databaseService.query
+        .mockResolvedValueOnce({ rowCount: 2, rows: [{ id: 1, isAvailable: true }, { id: 2, isAvailable: false }] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ count: '2' }] });
+
+      const result = await service.searchProducts({}, false);
+
+      expect(result).toMatchObject({ total: 2 });
+      expect(databaseService.query).toHaveBeenNthCalledWith(
+        1,
+        expect.not.stringContaining('is_available = TRUE'),
+        [20, 0],
+      );
+    });
+
+    it('filters products by requested availability for an admin', async () => {
+      databaseService.query
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 2, isAvailable: false }] })
+        .mockResolvedValueOnce({ rowCount: 1, rows: [{ count: '1' }] });
+
+      await service.searchProducts({ available: false }, false);
+
+      expect(databaseService.query).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining('WHERE is_available = $1'),
+        [false, 20, 0],
+      );
+    });
+
     it('filters products by category', async () => {
       databaseService.query
         .mockResolvedValueOnce({ rowCount: 1, rows: [{ id: 1, category: 'coffee' }] })

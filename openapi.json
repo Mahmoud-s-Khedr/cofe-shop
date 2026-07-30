@@ -529,7 +529,7 @@
             "name": "available",
             "required": false,
             "in": "query",
-            "description": "Filter to only available products",
+            "description": "Filter by availability (admin requests only)",
             "schema": {
               "example": true,
               "type": "boolean"
@@ -549,6 +549,15 @@
                 "newest"
               ]
             }
+          },
+          {
+            "name": "Authorization",
+            "required": false,
+            "in": "header",
+            "description": "Optional admin Bearer token. Admins can view unavailable products and use the available filter.",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -561,9 +570,19 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "The available filter is restricted to admins",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponseDto"
+                }
+              }
+            }
           }
         },
-        "summary": "Search/list available products",
+        "summary": "Search/list products (admins can include unavailable products)",
         "tags": [
           "Products"
         ]

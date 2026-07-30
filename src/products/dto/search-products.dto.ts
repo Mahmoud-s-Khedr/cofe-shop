@@ -34,7 +34,7 @@ export class SearchProductsDto extends SearchProductsDtoBase {
   @Min(0)
   maxPrice?: number;
 
-  @ApiPropertyOptional({ description: 'Filter to only available products', example: true })
+  @ApiPropertyOptional({ description: 'Filter by availability (admin requests only)', example: true })
   @IsOptional()
   @Type(() => String)
   @Transform(({ value }) => {
