@@ -98,7 +98,7 @@ export class FilesService {
   private uploadBuffer(buffer: Buffer, folder: CloudinaryFolder): Promise<UploadApiResponse> {
     return new Promise((resolve, reject) => {
       const uploadStream = this.cloudinary.uploader.upload_stream(
-        { folder, resource_type: 'image' },
+        { folder, resource_type: 'auto' },
         (error, result) => {
           if (error || !result) {
             reject(error ?? new Error('Cloudinary upload failed'));

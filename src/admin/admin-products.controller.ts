@@ -70,8 +70,8 @@ export class AdminProductsController {
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiParam({ name: 'id', type: Number })
-  @ApiOperation({ summary: 'Upload a product image (admin only)' })
-  @ApiResponse({ status: 200, description: 'Image attached', type: ProductResponseDto })
+  @ApiOperation({ summary: 'Upload product media (JPEG, PNG, WEBP, or PDF; admin only)' })
+  @ApiResponse({ status: 200, description: 'Media attached', type: ProductResponseDto })
   async uploadImage(
     @Param() params: IdParamDto,
     @UploadedFile() file?: Express.Multer.File,

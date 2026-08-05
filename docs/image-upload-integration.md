@@ -1,6 +1,6 @@
-# Image Upload Integration Guide
+# Media Upload Integration Guide
 
-This guide describes how a frontend uploads product images and order payment screenshots to the API. The frontend sends the image to the API; the API validates it, stores it in Cloudinary, and returns the updated product or order with its public image URL.
+This guide describes how a frontend uploads product media and order payment proof to the API. The frontend sends the file to the API; the API validates it, stores it in Cloudinary, and returns the updated product or order with its public URL.
 
 ## API origin
 
@@ -9,10 +9,10 @@ All endpoints below are prefixed with `/api/v1`. For example, when the API is ho
 ## Rules shared by both endpoints
 
 - Send `multipart/form-data`.
-- Add the image under the form field name `file`.
-- Accepted formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), and WebP (`.webp`).
-- Maximum file size: 5 MB.
-- The server checks the MIME type, extension, and file signature. Renaming a non-image file to `.jpg` will be rejected.
+- Add the file under the form field name `file`.
+- Accepted formats: JPEG (`.jpg`, `.jpeg`), PNG (`.png`), WebP (`.webp`), and PDF (`.pdf`).
+- The API does not apply an application-level file-size limit. Upload capacity is still subject to browser, server, proxy, and Cloudinary limits.
+- The server checks the MIME type, extension, and file signature. Renaming a non-image file to `.jpg` or a non-PDF file to `.pdf` will be rejected.
 - Do **not** manually set the `Content-Type` request header when using `FormData`; the browser supplies the required multipart boundary.
 
 The API uses this response envelope:
@@ -34,14 +34,14 @@ On failure, `success` is `false` and `error.message` contains a user-safe reason
   "data": null,
   "error": {
     "code": 400,
-    "message": "Only JPEG, PNG, and WEBP images are allowed",
+    "message": "Only JPEG, PNG, WEBP images, and PDF documents are allowed",
     "timestamp": "2026-07-23T10:00:00.000Z",
     "path": "/api/v1/orders/BW-20260713-0042/screenshot"
   }
 }
 ```
 
-## 1. Upload a product image (admin)
+## 1. Upload product media (admin)
 
 ### Endpoint
 
@@ -53,7 +53,7 @@ Content-Type: multipart/form-data
 
 Only authenticated administrators can call this endpoint. `:id` is the numeric product ID.
 
-Each upload adds an image to the product. Images are returned in upload order; the first image is also exposed as `imageUrl` for compatibility with clients that only display one image.
+Each upload adds media to the product. Media is returned in upload order; the first item's URL is also exposed as `imageUrl` for compatibility with clients that only display one URL. If the URL points to a PDF, render an Open/Download link rather than an `<img>` element.
 
 To remove a selected image, call:
 
@@ -86,7 +86,7 @@ export async function uploadProductImage(
   file: File,
   adminAccessToken: string,
 ): Promise<Product> {
-  validateImageBeforeUpload(file);
+  validateMediaBeforeUpload(file);
 
   const form = new FormData();
   form.append('file', file);
@@ -162,7 +162,7 @@ export async function uploadPaymentScreenshot(
   file: File,
   auth: { accessToken?: string; guestAccessToken?: string },
 ): Promise<Order> {
-  validateImageBeforeUpload(file);
+  validateMediaBeforeUpload(file);
 
   const form = new FormData();
   form.append('file', file);
@@ -204,12 +204,12 @@ Successful response (abbreviated):
 
 ## File input and client-side validation
 
-Use an `accept` attribute to guide users, then validate size and MIME type before starting the request. Client validation improves the experience, but server validation is authoritative.
+Use an `accept` attribute to guide users, then validate MIME type before starting the request. Client validation improves the experience, but server validation is authoritative. Do not impose a client-side size limit if uploads should use the API's unbounded application-level policy.
 
 ```tsx
 <input
   type="file"
-  accept="image/jpeg,image/png,image/webp"
+  accept="image/jpeg,image/png,image/webp,application/pdf"
   onChange={(event) => {
     const file = event.currentTarget.files?.[0];
     if (file) void uploadPaymentScreenshot(apiBaseUrl, orderNumber, file, { guestAccessToken });
@@ -218,22 +218,18 @@ Use an `accept` attribute to guide users, then validate size and MIME type befor
 ```
 
 ```ts
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const ALLOWED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
 
-function validateImageBeforeUpload(file: File): void {
-  if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
-    throw new Error('Choose a JPEG, PNG, or WebP image.');
-  }
-  if (file.size > MAX_IMAGE_BYTES) {
-    throw new Error('Choose an image smaller than 5 MB.');
+function validateMediaBeforeUpload(file: File): void {
+  if (!ALLOWED_MEDIA_TYPES.has(file.type)) {
+    throw new Error('Choose a JPEG, PNG, WebP image, or PDF document.');
   }
 }
 ```
 
-## Displaying the uploaded image
+## Displaying uploaded media
 
-Use `data.product.images` for product galleries, or `data.product.imageUrl` when only the primary image is needed. Use `data.order.screenshotUrl` for payment screenshots. These are Cloudinary HTTPS URLs and can be assigned to an image source.
+Use `data.product.images` for product galleries, or `data.product.imageUrl` when only the primary item is needed. Use `data.order.screenshotUrl` for payment proof. These are Cloudinary HTTPS URLs. Render image URLs with an image element; present PDF URLs as an Open/Download link.
 
 ```tsx
 {imageUrl && <img src={imageUrl} alt="Uploaded image" />}

@@ -54,8 +54,8 @@ export class OrdersController {
   @Post(':orderNumber/screenshot')
   @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload the payment screenshot for a pending order' })
-  @ApiResponse({ status: 200, description: 'Screenshot attached', type: OrderResponseDto })
+  @ApiOperation({ summary: 'Upload payment proof (JPEG, PNG, WEBP, or PDF) for a pending order' })
+  @ApiResponse({ status: 200, description: 'Payment proof attached', type: OrderResponseDto })
   uploadScreenshot(
     @Param() params: OrderNumberParamDto,
     @CurrentUser() user: AuthUser | null,

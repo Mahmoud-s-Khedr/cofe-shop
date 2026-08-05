@@ -1,12 +1,17 @@
 import { BadRequestException } from '@nestjs/common';
 
-const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
-const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_EXTENSIONS_BY_MIME_TYPE = new Map<string, Set<string>>([
+  ['image/jpeg', new Set(['.jpg', '.jpeg'])],
+  ['image/png', new Set(['.png'])],
+  ['image/webp', new Set(['.webp'])],
+  ['application/pdf', new Set(['.pdf'])],
+]);
 
 const MAGIC_BYTE_CHECKS: Array<{ mimeType: string; signature: number[] }> = [
   { mimeType: 'image/jpeg', signature: [0xff, 0xd8, 0xff] },
   { mimeType: 'image/png', signature: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  { mimeType: 'application/pdf', signature: [0x25, 0x50, 0x44, 0x46, 0x2d] },
 ];
 
 function matchesSignature(buffer: Buffer, signature: number[]): boolean {
@@ -29,20 +34,16 @@ export function validateImageUpload(file: {
   buffer: Buffer;
 }): void {
   if (!file || !file.buffer || file.buffer.length === 0) {
-    throw new BadRequestException('Image file is required');
-  }
-
-  if (file.size > MAX_IMAGE_SIZE_BYTES) {
-    throw new BadRequestException('Image exceeds the maximum allowed size of 5MB');
+    throw new BadRequestException('File is required');
   }
 
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-    throw new BadRequestException('Only JPEG, PNG, and WEBP images are allowed');
+    throw new BadRequestException('Only JPEG, PNG, WEBP images, and PDF documents are allowed');
   }
 
   const extension = extractExtension(file.originalname);
-  if (!ALLOWED_EXTENSIONS.has(extension)) {
-    throw new BadRequestException('File extension is not allowed');
+  if (!ALLOWED_EXTENSIONS_BY_MIME_TYPE.get(file.mimetype)?.has(extension)) {
+    throw new BadRequestException('File extension does not match the declared file type');
   }
 
   const matchesKnownSignature =

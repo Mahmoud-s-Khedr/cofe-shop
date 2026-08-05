@@ -21,7 +21,7 @@ This API covers:
 cp .env.dev.example .env
 docker compose -f docker-compose.dev.yml up --build
 ```
-App: http://localhost:800 · Swagger: http://localhost:800/api/docs
+App: http://localhost:800 · Swagger: http://localhost:800/docs
 
 **Local (no Docker), against your own Postgres/Redis:**
 
@@ -69,8 +69,8 @@ docker compose up --build
 3. Verify health:
 
 ```bash
-curl -fsS http://localhost:800/api/health/live
-curl -fsS http://localhost:800/api/health/ready
+curl -fsS http://localhost:800/api/v1/health/live
+curl -fsS http://localhost:800/api/v1/health/ready
 ```
 
 4. Optional manual migration run (recovery/debug/idempotency check):
@@ -94,9 +94,9 @@ Notes:
 ## Access Points
 
 - App entry (through Nginx): `http://localhost:800`
-- Swagger UI (through Nginx): `http://localhost:800/api/docs`
-- Health (live): `http://localhost:800/api/health/live`
-- Health (ready): `http://localhost:800/api/health/ready`
+- Swagger UI (through Nginx): `http://localhost:800/docs`
+- Health (live): `http://localhost:800/api/v1/health/live`
+- Health (ready): `http://localhost:800/api/v1/health/ready`
 
 Notes:
 - The NestJS app listens on port `3000` inside the container.
